@@ -1,0 +1,4 @@
+/lucky
+*.test
+coverage.out
+.env
