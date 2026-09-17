@@ -9,8 +9,9 @@
 //	client, err := lucky.New(ctx, lucky.Options{Account: os.Getenv("LUCKY_OP_ACCOUNT")})
 //	secret, err := client.Resolve(ctx, "op://wtp/Housecall Pro API key/credential")
 //
-// Lucky knows the keys. Connections knows the doors. Collect brings the data
-// home. Nothing about vendor authority or collected data belongs in here.
+// Lucky holds the keys and proves what they reach; Cosmic is the runtime and
+// the storage. Collect is a workload, not a service. Nothing about collected
+// business data belongs in here.
 package lucky
 
 import (

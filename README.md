@@ -1,10 +1,22 @@
 # Lucky
 
-Lucky is the CosmOS credential custodian: it manages credential access through 1Password while Connections owns vendor authority and Collect owns business-data retrieval.
+Lucky is the CosmOS credential custodian: it holds a customer's keys in 1Password, puts them where work needs them, and proves they still reach the systems they are for. Cosmic is the runtime and the storage; Collect is a workload, not a service.
 
 ## v0.1 CLI
 
-Lucky uses Cobra for its command surface and the official 1Password Go SDK directly. It never shells out to the `op` CLI.
+Lucky uses Cobra for its command surface and viper for configuration, and reaches
+1Password through one of two backends:
+
+- **sdk** — the official 1Password Go SDK, for a service account.
+- **cli** — the `op` CLI, which is what works on a WSL machine where the desktop
+  app is on the Windows side and unreachable from a Linux binary.
+
+`auto`, the default, prefers the SDK when `OP_SERVICE_ACCOUNT_TOKEN` is set and
+falls back to the CLI. An earlier version of this file said Lucky never shells
+out to `op`; that was true of the SDK-only v0.1 and is no longer. What Lucky
+guarantees is the behaviour, not the transport: a secret never appears in argv,
+in shell history, or in `ps` output on either path — the CLI backend always
+writes items through a JSON template on stdin, never assignment arguments.
 
 ```bash
 go build -o lucky ./cmd/lucky
@@ -33,6 +45,7 @@ lucky new-customer "We The Plumbers"   # the vault: their boundary
 lucky profile --vault we-the-plumbers  # who they are; not secret, lives there anyway
 lucky put --vault we-the-plumbers      # paste a credential, get a reference back
 lucky inventory --vault we-the-plumbers # what is held, what is missing
+lucky verify --vault we-the-plumbers   # which of them actually still work
 lucky archive --vault we-the-plumbers --provider godaddy --service api
 ```
 
@@ -48,6 +61,45 @@ or add one by dropping a JSON file in `$LUCKY_TEMPLATES`.
 There is no `delete`. `archive` retires a credential and keeps the record,
 because a revoked key is still evidence of what was issued and when it stopped
 being trusted.
+
+## Proving a credential works
+
+Existing is not the same as working. A key can resolve from 1Password, be
+perfectly well-formed, and still be revoked, scoped to the wrong account, or
+pointed at a different customer's tenant.
+
+```bash
+lucky verify --vault wtp
+lucky verify --vault wtp --provider google
+```
+
+`verify` makes one read-only authenticated call per credential and reports what
+came back, exiting non-zero if any credential failed. No secret value appears in
+the output, in an error, or in a URL echoed back by a transport failure.
+
+The call is **data, not code**. Each provider template carries a `verify` stanza:
+
+```json
+"verify": {"method": "GET", "path": "/user/tokens/verify", "expect": 200,
+           "contains": "\"success\"", "proves": "the token is active"}
+```
+
+So adding a provider is an edit to `providers.json`, and no vendor's API becomes
+a build-time dependency of the thing that holds the keys.
+
+Two stanza fields exist because a status code is not always the truth:
+
+- `contains` asserts something about the body. Google's Geocoding API answers
+  HTTP 200 to a key it rejected, so a status-only check reports a dead key as
+  working.
+- `refusal` declares a rejection that *confirms* the credential — a
+  referrer-restricted browser key is supposed to be refused server-side. It
+  matches on the reason text, not just the status, because an invalid key and a
+  correctly-restricted one are both `REQUEST_DENIED` and differ only in the
+  message.
+
+A check that cannot be expressed as one HTTP call gets no stanza, and the
+credential is reported as `unchecked` rather than guessed at.
 
 ## Use Lucky as a library
 
@@ -71,7 +123,7 @@ came from configuration before it authenticates.
 
 See [ROADMAP.md](ROADMAP.md) for scope and service boundaries.
 
-Lucky owns credential custody only. Connections decides which vendor, service, and resource a credential authorizes; Collect retrieves authorized business data and writes it to Cosmic storage. Those services are deliberately outside this repository.
+Lucky owns credential custody and the proof that a credential works. It does not grant access — the vendor did that when the key was issued — and it never carries business data: Collect retrieves that and writes it to Cosmic storage, deliberately outside this repository.
 
 ## Development
 

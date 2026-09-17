@@ -34,6 +34,11 @@ type Template struct {
 type Service struct {
 	Category string      `json:"category,omitempty"`
 	Fields   []FieldSpec `json:"fields"`
+
+	// Verify is the one call that proves a credential of this shape works.
+	// Optional: a service with no stanza is reported as unchecked rather than
+	// guessed at.
+	Verify *Verify `json:"verify,omitempty"`
 }
 
 // FieldSpec describes one prompt.
@@ -106,6 +111,20 @@ func (c Catalog) Services(provider string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// Verification returns the check for one provider/service pair, if the
+// template declares one.
+func (c Catalog) Verification(provider, service string) (*Verify, bool) {
+	t, ok := c[provider]
+	if !ok {
+		return nil, false
+	}
+	s, ok := t.Services[service]
+	if !ok || s.Verify == nil {
+		return nil, false
+	}
+	return s.Verify, true
 }
 
 // Fields returns the prompts for one provider/service pair.

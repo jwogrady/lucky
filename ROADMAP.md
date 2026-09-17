@@ -2,9 +2,20 @@
 
 Lucky is the credential custodian for CosmOS.
 
-**Lucky knows the keys. Connections knows the doors. Collect brings the data home.**
+**Lucky always has your back. Lucky hooks you up because he has all the connections. Lucky gets you in the door — he doesn't come in with you.**
 
 Lucky is implemented in Go and uses 1Password as the official credential provider. Lucky stores and manages secrets in 1Password; downstream services receive references and short-lived resolved values only when needed.
+
+## The platform is two services
+
+An earlier version of this document described four: Lucky, Connections, Collect, and Cosmic. That has been reduced, and the reduction is not cosmetic — it moves work across a service boundary.
+
+- **Lucky — keys and access.** Access is part of keys. A credential *is* an access grant: what it can reach was decided when it was issued, by whoever scoped it. A separate service asking a vendor "what may this key do" would be re-deriving something the key already carries, and would need the key to do it — which means holding it, which is Lucky's job. So vendor authority folds into Lucky.
+- **Cosmic — runtime and storage.** The runtime handles input and output; storage handles persistence and logs.
+
+**Collect is not a platform service. It is the first workload** that runs on those two.
+
+The practical consequence for this repository: if Lucky owns access, Lucky owns *proving* access. That is `lucky verify`, and it is what makes "existing is not the same as working" a checkable claim about a customer's whole vault rather than a thing an operator finds out during an incident.
 
 ## Principles
 
@@ -13,8 +24,9 @@ Lucky is implemented in Go and uses 1Password as the official credential provide
 - **Cosmic stores credential references and authority metadata, never secret values.**
 - **One customer Cosmic should be scoped to that customer's vault/access boundary.**
 - **CLI first. API later.** The Go core must not depend on either interface.
-- **Least privilege by default.** A credential should expose only what the connection requires.
-- **Lucky manages credentials, not business data.** Vendor data belongs to Collect and Cosmic storage.
+- **Least privilege by default.** A credential should expose only what the work requires.
+- **Lucky manages credentials, not business data.** Vendor data belongs to the workload and to Cosmic storage.
+- **Existing is not the same as working.** A credential Lucky holds but cannot prove is a credential Lucky reports as unproven.
 
 ## v0.1 — Lucky is born
 
@@ -38,7 +50,10 @@ lucky status
 lucky vaults
 lucky items --vault wtp
 lucky get op://wtp/<item>/<field>
+lucky run --env-file .env.op -- <command>
 ```
+
+`lucky run` is the "juggles keys between environments" half of Lucky's stated purpose: it resolves an env file's references and hands the values to one child process, and to nothing else.
 
 ### Acceptance
 
@@ -107,50 +122,47 @@ An operator can securely request or hand off a credential without email, chat, t
 
 ---
 
-## v0.4 — Lucky meets Connections
+## v0.4 — Lucky owns access
 
-Goal: establish the contract between credential custody and vendor authority.
+Goal: make Lucky consumable as a library, and make the access a credential carries something Lucky can demonstrate.
 
-Lucky does **not** decide what a credential can access. Connections does.
+This section previously read "Lucky meets Connections" and said that Lucky does **not** decide what a credential can access — Connections does. Connections is no longer a separate service, and that sentence is withdrawn. What replaces it is narrower and more honest: Lucky does not *grant* access, because the vendor already did that when the key was issued. Lucky holds the key, and can therefore show what it reaches.
 
 ### Deliverables
 
-- Public Go interface for credential resolution.
-- Typed credential reference model.
-- Connection-safe error model:
+- Public Go interface for credential resolution. *(done — the `credential` package and `lucky.New`)*
+- Typed credential reference model. *(done — `credential.ValidateReference`, sections included)*
+- A safe error model:
   - credential missing
   - vault inaccessible
   - reference malformed
   - secret unavailable
   - authentication expired
-- No 1Password-specific behavior leaks into vendor connectors beyond the reference abstraction.
-- Integrate first with WTP Connections:
-  - Google
-  - Housecall Pro
+- No 1Password-specific behavior leaks into consumers beyond the reference abstraction.
+- **Verification as template data, not vendor code.** A provider template carries the one call that proves a credential of that shape works. Adding a provider is an edit to `providers.json`; a customer with a non-standard endpoint is an overlay file. No vendor's API becomes a build-time dependency of the custodian.
+- A check that cannot be expressed as one HTTP call gets no stanza and is reported as unchecked. Lucky does not guess.
 
-### Contract
+### CLI
 
 ```text
-Lucky
-  ↓ credential reference / resolved secret
-Connections
-  ↓ verified vendor authority and discovered resources
-Collect
+lucky verify --vault wtp
+lucky verify --vault wtp --provider google
 ```
 
 ### Acceptance
 
-Connections can ask Lucky for a credential, validate it against a vendor, and persist only the credential reference plus discovered authority metadata.
+An operator can ask one question — "is this customer actually connected?" — and get a per-credential answer, with a non-zero exit when any credential fails, and no secret value anywhere in the output or in any error along the way.
 
 ---
 
-## v0.5 — Lucky enables Collect
+## v0.5 — Lucky carries the first workload
 
-Goal: let verified Connections drive real collection without exposing secrets beyond the operation that needs them.
+Goal: let Collect, the first workload, run on proved credentials without exposing secrets beyond the operation that needs them.
 
 ### Deliverables
 
 - Scoped credential resolution for Gather/Collect jobs.
+- `lucky run` puts resolved values into a child process's environment and nowhere else — no file, no argv, no shell history.
 - Clear lifecycle around resolved values.
 - Collector integration for the first WTP sources:
   - Google Search Console
@@ -162,7 +174,7 @@ Goal: let verified Connections drive real collection without exposing secrets be
 
 ### Acceptance
 
-A verified WTP Connection can use Lucky to authenticate, Collect can retrieve vendor data, and the resulting customer data lands in Cosmic storage with no credential material persisted there.
+A credential Lucky has proved can authenticate a Collect run, the workload retrieves vendor data, and the resulting customer data lands in Cosmic storage with no credential material persisted there.
 
 ---
 
@@ -199,7 +211,7 @@ Goal: expose Lucky to other CosmOS services only after the CLI and domain model 
 
 ### Acceptance
 
-Connections and other authorized CosmOS services can use Lucky remotely without embedding 1Password integration code themselves.
+Cosmic and other authorized CosmOS services can use Lucky remotely without embedding 1Password integration code themselves.
 
 ---
 
@@ -217,7 +229,7 @@ Goal: production-ready credential custody for CosmOS.
 - Tested create/read/update/archive/share lifecycle.
 - Auditable non-secret operational events.
 - Documented recovery and credential-rotation procedures.
-- Integration tests proving Lucky → Connections → Collect for a reference Cosmic.
+- Integration tests proving Lucky → Collect for a reference Cosmic.
 
 ## First reference implementation
 
@@ -228,15 +240,13 @@ The initial path is:
 ```text
 1Password vault: wtp
         ↓
-      Lucky
-        ↓
-   Connections
+      Lucky  — holds the keys, and proves what they reach
    ├── Google
    └── Housecall Pro
         ↓
-     Collect
+     Collect  — the first workload, not a service
         ↓
- cosmic-wtp storage
+ cosmic-wtp storage  — Cosmic runtime and storage
 ```
 
-The first useful outcome is not a dashboard. It is proof that a customer-authorized credential can be safely managed by Lucky, verified through Connections, and used by Collect to bring the customer's vendor data into their Cosmic.
+The first useful outcome is not a dashboard. It is proof that a customer-authorized credential can be safely managed by Lucky, proved by Lucky against the vendor, and used by Collect to bring the customer's vendor data into their Cosmic.

@@ -148,6 +148,45 @@ func (c *Client) Resolve(ctx context.Context, reference string) (string, error) 
 	return strings.TrimRight(string(raw), "\r\n"), nil
 }
 
+// ItemFields reads one item's shape: which fields it has, which are secret,
+// and the reference for each.
+//
+// `op item get --format json` returns concealed values along with everything
+// else, and this drops them on the floor. That is not a formality. The
+// reference it keeps instead — which op computes itself — is the only thing
+// that gets a section right: the wtp vault's Supabase password lives at
+//
+//	op://wtp/Supabase/add more/password
+//
+// and any caller assembling op://vault/title/label by hand would look for it in
+// the wrong place and report a working credential as missing.
+func (c *Client) ItemFields(ctx context.Context, vaultID, itemID string) ([]credential.Field, error) {
+	raw, err := c.run(ctx, "item", "get", itemID, "--vault", vaultID, "--format", "json")
+	if err != nil {
+		return nil, err
+	}
+	var item opItem
+	if err := json.Unmarshal(raw, &item); err != nil {
+		return nil, fmt.Errorf("could not read the item: %w", err)
+	}
+	out := make([]credential.Field, 0, len(item.Fields))
+	for _, f := range item.Fields {
+		secret := strings.EqualFold(f.Type, "CONCEALED")
+		field := credential.Field{
+			ID:        f.ID,
+			Label:     f.Label,
+			Type:      f.Type,
+			Reference: f.Reference,
+			Secret:    secret,
+		}
+		if !secret {
+			field.Value = f.Value
+		}
+		out = append(out, field)
+	}
+	return out, nil
+}
+
 // Create writes an item from a JSON template on stdin. No field value is ever
 // passed as a command argument.
 func (c *Client) Create(ctx context.Context, item credential.NewItem) (credential.Created, error) {

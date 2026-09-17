@@ -77,12 +77,13 @@ type Creator interface {
 	Create(context.Context, NewItem) (Created, error)
 }
 
-// Custodian is the full surface, for operator tooling that needs both.
+// Custodian is the full surface, for operator tooling that needs all of it.
 type Custodian interface {
 	Client
 	Creator
 	Archiver
 	Provisioner
+	Inspector
 }
 
 // ProfileFields are the customer and business details captured before any

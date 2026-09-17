@@ -48,6 +48,10 @@ type App struct {
 	In        io.Reader
 	Config    Defaults
 	NewClient func(context.Context, Config) (Client, error)
+
+	// HTTP performs the calls `lucky verify` makes to vendors. Nil is the
+	// normal case and means a real client; a test supplies its own.
+	HTTP Doer
 }
 
 func (a App) Run(ctx context.Context, args []string) error {
@@ -135,6 +139,7 @@ func (a App) command() *cobra.Command {
 	root.AddCommand(a.profileCommand(&account))
 	root.AddCommand(a.putCommand(&account))
 	root.AddCommand(a.inventoryCommand(&account))
+	root.AddCommand(a.verifyCommand(&account))
 	root.AddCommand(a.archiveCommand(&account))
 	root.AddCommand(a.newVaultCommand(&account))
 	return root
