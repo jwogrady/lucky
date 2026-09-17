@@ -22,7 +22,7 @@ The practical consequence for this repository: if Lucky owns access, Lucky owns 
 - **1Password is the system of record for secrets.**
 - **No secrets in Git, DuckDB, logs, config files, or application databases.**
 - **Cosmic stores credential references and authority metadata, never secret values.**
-- **One customer Cosmic should be scoped to that customer's vault/access boundary.**
+- **The boundary is the person, not the account.** Nobody hands Lucky an account. A *person* grants our team access to something they hold authority over, and that person is what the grant is attributable to, revocable by, and answerable to. An account is what the access happens to point at.
 - **CLI first. API later.** The Go core must not depend on either interface.
 - **Least privilege by default.** A credential should expose only what the work requires.
 - **Lucky manages credentials, not business data.** Vendor data belongs to the workload and to Cosmic storage.
@@ -75,11 +75,33 @@ lucky new cred         a credential that is not an API key
 
 ---
 
+## The boundary is the person
+
+An earlier version of this document said the customer's vault is the boundary, and scoped a Cosmic to it. That is still how storage is arranged, but it named the wrong thing as the boundary.
+
+We are not given accounts. We are given access, by a person, to something they hold authority over. That person is the unit that matters:
+
+- **Attribution.** "Who authorized this" has a person as its answer, never a business. A business cannot consent.
+- **Revocation.** When a person leaves a business, everything they granted is in question — and nothing else is. That set has to be identifiable, which means the grant records who made it.
+- **Consent.** A magic link goes to a person. What comes back is that person's grant, which is why the link is the mechanism and not a convenience.
+- **Least privilege.** What a credential reaches was decided by the person who issued it, with whatever authority they personally had.
+
+### Consequences to settle
+
+- Does the vault stay per business with the grant attributing to a person, or does the person become the vault? The first keeps a customer's keys in one place; the second follows the boundary literally. These are not equivalent when one person serves several businesses, or several people grant for one.
+- What happens to a credential when the person who granted it leaves. It has not been revoked by the vendor, and it probably still works — which is precisely the problem.
+- One person granting across several customers: whose boundary holds that credential.
+- The audit record of a grant is not secret, and needs to outlive the credential it authorized.
+
+---
+
 ## Magic-link credential intake
 
 **The customer enters their own credential. The operator never handles it.**
 
 A profile — first name, last name, email, mobile — is what Lucky needs to send a magic link. The link opens a secure field where the customer enters and authorizes the credential themselves. It lands in their vault, and Lucky hands back a reference as it does today.
+
+The profile is not contact details. It identifies the person whose grant this is, which is the record the boundary rests on.
 
 This removes the operator from the secret's path entirely. Today a credential arrives by email or text, sits in an inbox, and gets pasted into a terminal by someone who is not its owner; `put` makes that moment as safe as it can be, but the copy in the inbox still exists and the operator still saw the value. A link the customer fills in has no such copy.
 
