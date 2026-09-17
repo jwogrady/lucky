@@ -14,6 +14,30 @@ import (
 )
 
 type Config struct{ Account string }
+
+// Defaults supplies settings resolved from flags, environment and config file.
+// It is an interface so the CLI keeps no dependency on viper, and so tests can
+// run with no configuration at all.
+type Defaults interface {
+	Vault() string
+	Templates() string
+	Used() string
+}
+
+func (a App) defaultVault() string {
+	if a.Config == nil {
+		return ""
+	}
+	return a.Config.Vault()
+}
+
+func (a App) templatesDir() string {
+	if a.Config == nil {
+		return ""
+	}
+	return a.Config.Templates()
+}
+
 type Vault = credential.Vault
 type Item = credential.Item
 type Client = credential.Client
@@ -22,6 +46,7 @@ type App struct {
 	Out       io.Writer
 	Err       io.Writer
 	In        io.Reader
+	Config    Defaults
 	NewClient func(context.Context, Config) (Client, error)
 }
 

@@ -22,7 +22,7 @@ import (
 // nothing is echoed, and what comes back is a reference.
 
 func (a App) catalog() (credential.Catalog, error) {
-	dir := os.Getenv("LUCKY_TEMPLATES")
+	dir := a.templatesDir()
 	if dir == "" {
 		if home, err := os.UserConfigDir(); err == nil {
 			dir = home + "/lucky/providers"
@@ -79,7 +79,7 @@ func (a App) profileCommand(account *string) *cobra.Command {
 				return err
 			}
 			p := prompt.New(a.in(), a.Err)
-			if vaultName, err = required(p, vaultName, "vault", "the customer's vault"); err != nil {
+			if vaultName, err = required(p, orDefault(vaultName, a.defaultVault()), "vault", "the customer's vault"); err != nil {
 				return err
 			}
 			vaultID, err := resolveVault(cmd.Context(), client, vaultName)
@@ -150,7 +150,7 @@ func (a App) putCommand(account *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if vaultName, err = required(p, vaultName, "vault", "the customer's vault"); err != nil {
+			if vaultName, err = required(p, orDefault(vaultName, a.defaultVault()), "vault", "the customer's vault"); err != nil {
 				return err
 			}
 			vaultID, err := resolveVault(cmd.Context(), client, vaultName)
@@ -307,4 +307,11 @@ func envLine(provider, service, field, reference, value string) string {
 		return fmt.Sprintf("%s='%s'", name, reference)
 	}
 	return fmt.Sprintf("%s=%q", name, reference)
+}
+
+func orDefault(given, fallback string) string {
+	if strings.TrimSpace(given) != "" {
+		return given
+	}
+	return fallback
 }

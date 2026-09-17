@@ -140,6 +140,12 @@ func TestInventoryReportsHeldAndMissingWithoutReadingValues(t *testing.T) {
 	if !strings.Contains(out.String(), "missing\tgodaddy api") {
 		t.Fatalf("should list untouched templates as missing:\n%s", out.String())
 	}
+	// fakeClient holds one item titled just "Google". That is too ambiguous to
+	// claim any particular Google service, so it belongs in the untemplated
+	// list rather than being asserted as a match.
+	if !strings.Contains(out.String(), "untemplated") {
+		t.Fatalf("an ambiguous title should surface as untemplated:\n%s", out.String())
+	}
 	if !strings.Contains(errOut.String(), "no customer profile") {
 		t.Fatalf("a vault with no profile should say so:\n%s", errOut.String())
 	}

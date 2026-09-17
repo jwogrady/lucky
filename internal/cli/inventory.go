@@ -2,20 +2,22 @@ package cli
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
 
 // inventoryCommand answers "what do I have for this customer, and what am I
-// missing" by crossing the provider catalog against what is actually in the
-// vault.
+// missing" by crossing the provider catalog against what is in the vault.
 //
-// Lucky forgets every secret the moment it is handed over. What Lucky does not
-// forget is where things live — and this is that memory made legible. Item
-// titles only; no field is read and no secret is resolved, so this is safe to
-// run in front of the customer.
+// Lucky forgets every secret the moment it is handed over; what it does not
+// forget is where things live, and this is that memory made legible. Titles
+// only — no field is read and no secret is resolved — so it is safe to run in
+// front of the customer.
+//
+// Matching is loose and says so. A vault names things the way a person named
+// them, and a false "missing" would send an operator to reissue a key that
+// already works.
 func (a App) inventoryCommand(account *string) *cobra.Command {
 	var vaultName string
 	var missingOnly bool
@@ -32,6 +34,7 @@ func (a App) inventoryCommand(account *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			vaultName = orDefault(vaultName, a.defaultVault())
 			if strings.TrimSpace(vaultName) == "" {
 				return fmt.Errorf("--vault is required")
 			}
@@ -43,35 +46,40 @@ func (a App) inventoryCommand(account *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			held := map[string]bool{}
+			matched, unmatched := cat.MatchItems(items)
+			missing := cat.Missing(matched)
+
+			var profile bool
 			for _, item := range items {
-				held[strings.ToLower(strings.TrimSpace(item.Title))] = true
-			}
-			var have, missing []string
-			for _, provider := range cat.Providers() {
-				for _, service := range cat.Services(provider) {
-					title := provider + " " + service
-					if held[title] {
-						have = append(have, title)
-					} else {
-						missing = append(missing, title)
-					}
+				if strings.EqualFold(strings.TrimSpace(item.Title), "cosmic profile") {
+					profile = true
 				}
 			}
-			sort.Strings(have)
-			sort.Strings(missing)
-			if !held["cosmic profile"] {
+			if !profile {
 				fmt.Fprintf(a.Err, "no customer profile in %s — run: lucky profile --vault %s\n\n", vaultName, vaultName)
 			}
 			if !missingOnly {
-				for _, t := range have {
-					fmt.Fprintf(a.Out, "held\t%s\top://%s/%s\n", t, vaultName, t)
+				for _, m := range matched {
+					state := "likely"
+					if m.Exact {
+						state = "held"
+					}
+					fmt.Fprintf(a.Out, "%s\t%s %s\t%s\top://%s/%s\n", state, m.Provider, m.Service, m.ItemName, vaultName, m.ItemName)
 				}
 			}
 			for _, t := range missing {
-				fmt.Fprintf(a.Out, "missing\t%s\t\n", t)
+				fmt.Fprintf(a.Out, "missing\t%s\t\t\n", t)
 			}
-			fmt.Fprintf(a.Err, "\n%d held, %d missing, of %d templated services\n", len(have), len(missing), len(have)+len(missing))
+			if !missingOnly {
+				for _, item := range unmatched {
+					fmt.Fprintf(a.Out, "untemplated\t\t%s\top://%s/%s\n", item.Title, vaultName, item.Title)
+				}
+			}
+			fmt.Fprintf(a.Err, "\n%d matched, %d missing of %d templated services; %d items in the vault with no template\n",
+				len(matched), len(missing), len(matched)+len(missing), len(unmatched))
+			if len(matched) > 0 {
+				fmt.Fprintf(a.Err, "\"likely\" is a loose title match, not a convention match — check it before trusting it.\n")
+			}
 			return nil
 		},
 	}
