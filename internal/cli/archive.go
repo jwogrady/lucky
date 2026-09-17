@@ -20,9 +20,9 @@ func (a App) archiveCommand(account *string) *cobra.Command {
 	var vaultName, provider, service string
 	var assumeYes bool
 	cmd := &cobra.Command{
-		Use:   "archive [vault]",
+		Use:   "archive [vault] [credential...]",
 		Short: "Retire a credential, keeping the record",
-		Args:  cobra.MaximumNArgs(1),
+		Args:  cobra.MinimumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := a.NewClient(cmd.Context(), Config{Account: *account})
 			if err != nil {
@@ -33,14 +33,25 @@ func (a App) archiveCommand(account *string) *cobra.Command {
 				return fmt.Errorf("this client cannot archive")
 			}
 			vaultName = vaultFrom(args, vaultName, a.defaultVault())
-			if strings.TrimSpace(vaultName) == "" || strings.TrimSpace(provider) == "" || strings.TrimSpace(service) == "" {
-				return fmt.Errorf("--vault, --provider and --service are required")
+			// A credential named directly, the way `lucky for` files one. The
+			// provider/service pair still works for templated items, but it
+			// could not name anything captured on the fly — which meant Lucky
+			// could create credentials it had no way to retire.
+			named := strings.TrimSpace(strings.Join(args[min(1, len(args)):], " "))
+			if strings.TrimSpace(vaultName) == "" {
+				return fmt.Errorf("a vault is required")
+			}
+			if named == "" && (strings.TrimSpace(provider) == "" || strings.TrimSpace(service) == "") {
+				return fmt.Errorf("name the credential, or give --provider and --service")
 			}
 			vaultID, err := resolveVault(cmd.Context(), client, vaultName)
 			if err != nil {
 				return err
 			}
-			title := strings.ToLower(provider + " " + service)
+			title := named
+			if title == "" {
+				title = strings.ToLower(provider + " " + service)
+			}
 			items, err := client.Items(cmd.Context(), vaultID)
 			if err != nil {
 				return err
