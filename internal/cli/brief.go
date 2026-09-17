@@ -102,6 +102,9 @@ func (a App) brief(cmd *cobra.Command, account string) error {
 	for _, line := range next {
 		fmt.Fprintf(a.Err, "  %s\n", line)
 	}
+	if install := completionHint(); install != "" {
+		fmt.Fprintf(a.Err, "\nyou're typin' vault names by hand. let me finish 'em for you:\n  %s\n  then open a new shell.\n", install)
+	}
 	fmt.Fprintf(a.Err, "\nyou got any new connections for me?\n")
 	return nil
 }
