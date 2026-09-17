@@ -6,6 +6,30 @@ Lucky is the credential custodian for CosmOS.
 
 Lucky is implemented in Go and uses 1Password as the official credential provider. Lucky stores and manages secrets in 1Password; downstream services receive references and short-lived resolved values only when needed.
 
+## What the CLI is
+
+**Lucky's CLI is the input experience around 1Password. It assumes human hands: typing, copying, pasting.**
+
+1Password already has the model. A vault holds items, an item holds fields, a field has a type and a value — which is exactly *person > credential > key > value*, and `Concealed` is a field type rather than a thing Lucky invents. The SDK already puts an item back with a key appended, already shares, already takes file attachments, already archives. Lucky should not re-derive any of it.
+
+What the SDK has no opinion about is the part that involves a person: a value read down a phone line, a photograph of a sticky note, a password pasted out of an email. Capturing that without echoing it, without putting it in argv, without it touching disk, and without making someone choose a template before they can write anything down — that is the product.
+
+### The split this creates
+
+| | human present | no human |
+|---|---|---|
+| surface | `lucky` CLI | library, later the API |
+| backend | `op` CLI, desktop unlock | SDK, service account |
+| work | intake, lookup, handover | Collect runs, scheduled verification |
+
+The CLI backend is not a fallback. It is the right backend for the case the CLI is for: a person is sitting there, their 1Password is unlocked, and they are typing. A service account would be the wrong credential for that — it would let the tool reach a customer's vault when nobody is at the keyboard.
+
+It also means the existing `auto` rule is right for a reason worth stating: `OP_SERVICE_ACCOUNT_TOKEN` being set *is* the signal that no human is present, so preferring the SDK when it exists and the CLI when it does not is the human/unattended split expressing itself.
+
+`lucky run` is the seam between the two. It is the moment a value captured by hand is handed to a process, and after it no human is involved.
+
+---
+
 ## The platform is two services
 
 An earlier version of this document described four: Lucky, Connections, Collect, and Cosmic. That has been reduced, and the reduction is not cosmetic — it moves work across a service boundary.
