@@ -34,6 +34,28 @@ Neither is a reason not to do it. They are reasons the person boundary, the cons
 
 ---
 
+## Owned by the account, controlled by people
+
+Ownership and control are separate, and conflating them was the mistake in "the boundary is the person".
+
+- **The account owns the vault.** A company's credentials belong to the company. People come and go; the GoDaddy account does not stop being the business's when the office manager leaves.
+- **People control it.** Access is exercised by named individuals, and every grant, handover and withdrawal is attributable to one of them.
+- **One of them is prime.** The person who can speak for the account — who can grant what others cannot, and who is asked when a grant needs authority behind it.
+- **Rules decide who does what.** Control is not a flat list of people with equal reach.
+
+This keeps what person-as-boundary was actually for. The reason that principle exists is that a business cannot consent — only a person can, and the record has to name them. That stays true. What changes is that consenting on behalf of an account is not the same as owning the account, and the vault follows ownership rather than consent.
+
+It also answers the awkward cases the earlier framing could not. One person serving several businesses controls several vaults without their credentials being commingled. Several people granting for one business are all recorded against the one vault they share. And a person leaving does not orphan a vault — it changes who controls it, which is a rules question rather than a data-migration one.
+
+### What prime means in practice
+
+- Some grants require prime, not merely a person. The office manager reading out a login and the owner authorizing bank access are different acts.
+- Prime is who Lucky asks when authority is in question, and who a consent record points at when a grant is challenged.
+- Prime can change without the vault changing, which is the point of separating ownership from control.
+- An account with no prime is an account nobody can speak for, and Lucky should say so rather than discover it during an incident.
+
+---
+
 ## Identity, authentication, authorization
 
 These are three things and the roadmap has been treating them as one. Separating them shows what is actually missing.
@@ -232,7 +254,7 @@ We are not given accounts. We are given access, by a person, to something they h
 
 ### Consequences to settle
 
-- Does the vault stay per business with the grant attributing to a person, or does the person become the vault? The first keeps a customer's keys in one place; the second follows the boundary literally. These are not equivalent when one person serves several businesses, or several people grant for one.
+- ~~Does the vault stay per business, or does the person become the vault?~~ **Settled: the vault is the company.** See "Owned by the account, controlled by people" below.
 - What happens to a credential when the person who granted it leaves. It has not been revoked by the vendor, and it probably still works — which is precisely the problem.
 - One person granting across several customers: whose boundary holds that credential.
 - The audit record of a grant is not secret, and needs to outlive the credential it authorized.
