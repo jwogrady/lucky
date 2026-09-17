@@ -34,6 +34,39 @@ Neither is a reason not to do it. They are reasons the person boundary, the cons
 
 ---
 
+## Identity, authentication, authorization
+
+These are three things and the roadmap has been treating them as one. Separating them shows what is actually missing.
+
+**Identity** — who this person is. The profile: name, email, mobile. Lucky has this.
+
+**Authentication** — proof that it is them, *now*. The magic-link click is one moment of it, and one moment is all it is: there is no session, no expiry, no re-authentication when the work changes, and no second factor. A click six months ago proving somebody read an email is not the same as knowing who is on the phone today.
+
+**Authorization** — what they may do. **This is missing entirely**, on both sides.
+
+### Two RBAC surfaces, and only one is ours
+
+**Our team, over customer vaults.** Today anyone who can reach a vault can do everything in it: read every secret, add credentials, archive them, and print the offboarding sheet. Those are not the same act and should not carry the same permission.
+
+1Password already solves this and Lucky should drive it rather than invent it. The SDK exposes `Client.Groups()`, and on a vault: `GrantGroupPermissions`, `RevokeGroupPermissions`, `UpdateGroupPermissions`. Permissions arrive as a bitmask on `GroupAccess` — a `uint32` with no named constants in the Go types, so the bit meanings have to be established before anything is built on them.
+
+This is the same argument as the storage model: the primitives exist, and Lucky's job is the experience of using them, not a parallel permission system that can disagree with the real one.
+
+**The customer's own authority.** Not a 1Password concept, and this is the one that is genuinely ours.
+
+A grant is only as good as the granter's right to give it. The office manager who reads out the GoDaddy login and the owner who reads out the bank details are not making the same kind of grant, and the consent record currently cannot tell them apart — it records that *a person agreed*, not that they were *entitled to agree*.
+
+That gap matters most exactly where the stakes are highest. It is also the difference between a consent record that would survive being questioned and one that would not: "she clicked the link" is a weaker answer than "she clicked the link, and she is the person at that business who can grant this."
+
+### What this changes
+
+- The profile needs the person's role at the business, and it is not a free-text note — it is what bounds their grants.
+- Consent records the granter's authority alongside the grant, because authority at the time is what the record has to preserve.
+- Some credentials should require an owner, not merely a person.
+- Authentication needs to be more than one historical click before any of this can be leaned on.
+
+---
+
 ## Leaving: the printout
 
 A customer leaves with their credentials on paper, sent by certified mail.
