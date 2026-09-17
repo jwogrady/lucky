@@ -62,8 +62,23 @@ func (a App) newVaultCommand(account *string) *cobra.Command {
 				return err
 			}
 			fmt.Fprintf(a.Out, "%s\t%s\n", created.ID, created.Title)
-			fmt.Fprintf(a.Err, "\ncreated. next:\n  lucky profile --vault %s\n  lucky put --vault %s\n  lucky inventory --vault %s\n",
-				created.Title, created.Title, created.Title)
+
+			// The vault and the person who controls it are one act, not two.
+			// A vault created now will be filled by the 1Password browser
+			// extension the next time somebody signs into one of their sites,
+			// and by then nobody is running a second command — so the name
+			// attached to everything that lands in here gets asked for while
+			// the operator is still here.
+			if err := a.requirePerson(cmd, client, created.ID, created.Title, nil); err != nil {
+				return err
+			}
+			if setter, ok := a.Config.(VaultSetter); ok {
+				if path, err := setter.SetVault(created.Title); err == nil {
+					fmt.Fprintf(a.Err, "workin' for %s now (%s).\n", created.Title, path)
+				}
+			}
+			fmt.Fprintf(a.Err, "\nready. save their logins straight into %s from the 1Password extension,\nand bring me anything that never touches a login form:\n  lucky <credential>          take down keys and values\n  lucky inventory             what is held, what is missing\n  lucky verify                which of them still work\n",
+				created.Title)
 			return nil
 		},
 	}
