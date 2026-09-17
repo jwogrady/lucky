@@ -6,6 +6,30 @@ Lucky is the credential custodian for CosmOS.
 
 Lucky is implemented in Go and uses 1Password as the official credential provider. Lucky stores and manages secrets in 1Password; downstream services receive references and short-lived resolved values only when needed.
 
+## Why credentials-first makes an identity provider
+
+A conventional identity provider asserts that somebody controls an email address. That is what a magic link proves, and it is a thin claim: an inbox.
+
+Working credentials-first produces a thicker one. By the time Lucky has a person on file, that person has:
+
+- been named and reached at an address or number they control,
+- granted access to systems they demonstrably hold authority over,
+- and had that access *proved against the vendor* by `lucky verify` — not once, but every time it runs.
+
+"This person controls this inbox" and "this person controls this GoDaddy account, this Supabase project and this cPanel, and we confirmed it on Tuesday" are different assertions. The second is closer to what anyone relying on an identity actually wants to know, and it falls out of doing credential custody properly rather than being a separate product.
+
+The consent record is the other half. An identity provider's real output is not "who is this" but "what did they authorize" — and that artifact already has to exist here for reasons that have nothing to do with identity.
+
+### The tension to resolve before leaning on this
+
+It pulls against the differentiator. The promise is that a customer keeps their keys when they leave, and that Lucky holds references rather than values. Becoming the thing that vouches for who they are makes leaving harder, which is exactly the lock-in the current position rejects. "We hold your keys and we are also your identity" is a sentence worth being uncomfortable with.
+
+It also concentrates risk. Being an identity provider means inheriting obligations that credential custody alone does not carry: revocation has to propagate, sessions have to end, recovery has to work for somebody who has lost the address the whole thing is anchored to, and a compromise stops being one customer's problem.
+
+Neither is a reason not to do it. They are reasons the person boundary, the consent record and withdrawal have to be right first — an identity provider built on a custody model that cannot cleanly revoke is worse than no identity provider.
+
+---
+
 ## What the CLI is
 
 **Lucky's CLI is the input experience around 1Password. It assumes human hands: typing, copying, pasting.**
