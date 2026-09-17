@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/jwogrady/lucky/credential"
-	"github.com/jwogrady/lucky/internal/prompt"
 	"github.com/spf13/cobra"
 )
 
@@ -59,7 +58,7 @@ func (a App) archiveCommand(account *string) *cobra.Command {
 			for _, item := range items {
 				if strings.EqualFold(strings.TrimSpace(item.Title), title) {
 					if !assumeYes {
-						p := prompt.New(a.in(), a.Err)
+						p := a.prompter()
 						ok, err := p.Confirm(fmt.Sprintf("archive %q in %s? it stays recoverable", item.Title, vaultName))
 						if err != nil {
 							return err

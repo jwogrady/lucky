@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/jwogrady/lucky/credential"
-	"github.com/jwogrady/lucky/internal/prompt"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +33,7 @@ func (a App) newVaultCommand(account *string) *cobra.Command {
 			if !ok {
 				return fmt.Errorf("this client cannot create vaults")
 			}
-			p := prompt.New(a.in(), a.Err)
+			p := a.prompter()
 			name := ""
 			if len(args) == 1 {
 				name = args[0]

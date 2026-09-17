@@ -121,7 +121,7 @@ func (a App) requirePerson(cmd *cobra.Command, client Client, vaultID, user stri
 	fmt.Fprintf(a.Err, "hold on — i don't know who %s is yet.\n", user)
 	fmt.Fprintf(a.Err, "every key in here was handed over by somebody. who?\n\n")
 
-	p := prompt.New(a.in(), a.Err)
+	p := a.prompter()
 	fields := credential.PersonFields()
 	values := map[string]string{}
 	for _, spec := range fields {
@@ -268,7 +268,7 @@ func (a App) handOverOrAdd(cmd *cobra.Command, client Client, vaultID, user stri
 		fmt.Fprintf(a.Err, "  it has: %s\n", strings.Join(labels, ", "))
 	}
 	fmt.Fprintf(a.Err, "adding it.\n\n")
-	p := prompt.New(a.in(), a.Err)
+	p := a.prompter()
 	spec := credential.FieldSpec{Label: key, Secret: concealed(plain)}
 	value, err := a.readKey(p, spec)
 	if err != nil || value == "" {
@@ -289,7 +289,7 @@ func (a App) takeDown(cmd *cobra.Command, client Client, vaultID, user, name str
 	if !ok {
 		return fmt.Errorf("this client cannot write to a vault")
 	}
-	p := prompt.New(a.in(), a.Err)
+	p := a.prompter()
 	fmt.Fprintf(a.Err, "i got nothin' called %q for %s. read it to me.\n", name, user)
 	// Names match exactly, so a typo makes a second credential rather than
 	// finding the first. Showing what is already filed costs one line and is

@@ -78,7 +78,7 @@ func (a App) profileCommand(account *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			p := prompt.New(a.in(), a.Err)
+			p := a.prompter()
 			if vaultName, err = required(p, vaultFrom(args, vaultName, a.defaultVault()), "vault", "the customer's vault"); err != nil {
 				return err
 			}
@@ -122,7 +122,7 @@ func (a App) putCommand(account *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			p := prompt.New(a.in(), a.Err)
+			p := a.prompter()
 
 			if provider == "" {
 				i, err := p.Choose("which provider?", cat.Providers())

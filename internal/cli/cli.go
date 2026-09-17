@@ -12,6 +12,7 @@ import (
 
 	"github.com/jwogrady/lucky/credential"
 	"github.com/jwogrady/lucky/internal/envfile"
+	"github.com/jwogrady/lucky/internal/prompt"
 	"github.com/spf13/cobra"
 )
 
@@ -54,6 +55,25 @@ type App struct {
 	// HTTP performs the calls `lucky verify` makes to vendors. Nil is the
 	// normal case and means a real client; a test supplies its own.
 	HTTP Doer
+
+	// p is the one prompter for this run. It is shared rather than built per
+	// function because a Prompter buffers: the first one to read swallows
+	// whatever else is already in the pipe, and a second one built over the
+	// same stdin finds it empty. Interactively that is invisible — a person
+	// types one line at a time, so there is nothing to over-read — which is
+	// exactly why it survived. Piped or scripted, the second stage of any
+	// command that asks twice gets EOF and reports it as the operator
+	// declining to answer.
+	p *prompt.Prompter
+}
+
+// prompter returns the run's prompter, building one if this App was assembled
+// directly rather than entered through Run.
+func (a App) prompter() *prompt.Prompter {
+	if a.p != nil {
+		return a.p
+	}
+	return prompt.New(a.in(), a.Err)
 }
 
 // ExitError carries a child process's status so the caller can exit with it
@@ -67,6 +87,7 @@ func (a App) Run(ctx context.Context, args []string) error {
 	if a.Out == nil || a.Err == nil || a.NewClient == nil {
 		return errors.New("invalid application configuration")
 	}
+	a.p = prompt.New(a.in(), a.Err)
 	root := a.command()
 	root.SetArgs(args)
 	return root.ExecuteContext(ctx)
