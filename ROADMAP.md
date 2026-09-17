@@ -83,6 +83,16 @@ The phone rings. The customer says "log into my GoDaddy account and change a pho
 
 This is the first case to satisfy because it needs nothing that does not exist: no magic link, no API, no service to send anything. It is also the case that actually happens.
 
+### "Who is Lucky?"
+
+It comes up on the call, and the answer is short:
+
+> Lucky is our key manager. Anything you need from me, I ask Lucky for the keys.
+
+That is a claim about how we work, and the system has to be built so it stays true. It says the operator does not keep the customer's keys to hand. They are in the customer's vault, and access is asked for at the moment it is needed — which is why credentials resolve to a reference everywhere except the one process that needs the value, and why `lucky run` puts a resolved secret into a child process and nowhere else.
+
+It is also the sentence that makes the boundary legible to the person on the other end of the phone. They are not handing their password to a company. They are handing it to a custodian that answers for it, and they can take it back.
+
 ### What it demands
 
 **The profile comes first, and it is the natural moment for it.** "Who are you" is not a formality on a phone call, it is the question you would ask anyway. The person on the line is the one granting access, so the profile is captured while they are there to answer — and the grant is attributable to them from the start rather than reconstructed later.
