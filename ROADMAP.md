@@ -84,6 +84,22 @@ This keeps what person-as-boundary was actually for. The reason that principle e
 
 It also answers the awkward cases the earlier framing could not. One person serving several businesses controls several vaults without their credentials being commingled. Several people granting for one business are all recorded against the one vault they share. And a person leaving does not orphan a vault — it changes who controls it, which is a rules question rather than a data-migration one.
 
+### For now: one person per account
+
+Every account is linked to one person. That is the working assumption, and it is worth stating because of how much it defers.
+
+With one person per account there is no prime to designate, no rules deciding who may grant what, and no ambiguity about whose authority a consent record rests on — there is only one candidate. The person controlling `agds` is Hank Paulsen; the person is the account's controller by construction.
+
+It also needs no code. A `person` item in the vault, holding name, email and mobile, is the link. The structure already supports it.
+
+What will break the assumption, when it does:
+
+- One person with two businesses — the same human controlling two accounts, which the model already handles since the vault is per account.
+- One account with several people — an office manager and an owner, which is where prime becomes necessary and the rules below start to matter.
+- A person leaving, when nobody else is attached to the account.
+
+None of that is today's problem. The assumption is recorded so its expiry is recognisable rather than discovered.
+
 ### What prime means in practice
 
 - Some grants require prime, not merely a person. The office manager reading out a login and the owner authorizing bank access are different acts.
