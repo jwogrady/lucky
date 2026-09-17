@@ -14,6 +14,11 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and S
 - Provider templates carry an optional `verify` stanza, so checking a new
   provider is an edit to `providers.json` rather than vendor code in the
   custodian.
+- `lucky run` resolves an env file's `op://` references and hands the values to
+  one child process through its environment — never stdout, stderr, a log or
+  disk. Resolution is all-or-nothing, every unresolvable reference is reported
+  at once, and the child's exit status becomes Lucky's. The grammar follows
+  `op inject`, so a reference embedded in a larger value resolves.
 - `credential.Inspector` reads an item's field shape — labels, types and
   references — without its secret values.
 
