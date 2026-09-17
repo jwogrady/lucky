@@ -20,13 +20,39 @@ Working credentials-first produces a thicker one. By the time Lucky has a person
 
 The consent record is the other half. An identity provider's real output is not "who is this" but "what did they authorize" — and that artifact already has to exist here for reasons that have nothing to do with identity.
 
-### The tension to resolve before leaning on this
+### The tension, and the answer to it
 
-It pulls against the differentiator. The promise is that a customer keeps their keys when they leave, and that Lucky holds references rather than values. Becoming the thing that vouches for who they are makes leaving harder, which is exactly the lock-in the current position rejects. "We hold your keys and we are also your identity" is a sentence worth being uncomfortable with.
+It appears to pull against the differentiator. The promise is that a customer keeps their keys when they leave, and becoming the thing that vouches for who they are looks like the lock-in that promise rejects.
+
+It is not, because leaving is settled: **they get a printout, by certified mail.**
+
+That is a stronger answer than an export button. The test of "you keep your keys" is not whether we hand them back, it is whether the customer still has them when we do not exist — and paper needs no vendor, no account, no software and no us. Certified mail adds the delivery receipt, which gives the handover the same evidentiary standing as the consent that started it. The relationship opens with a recorded grant and closes with a recorded return.
 
 It also concentrates risk. Being an identity provider means inheriting obligations that credential custody alone does not carry: revocation has to propagate, sessions have to end, recovery has to work for somebody who has lost the address the whole thing is anchored to, and a compromise stops being one customer's problem.
 
 Neither is a reason not to do it. They are reasons the person boundary, the consent record and withdrawal have to be right first — an identity provider built on a custody model that cannot cleanly revoke is worse than no identity provider.
+
+---
+
+## Leaving: the printout
+
+A customer leaves with their credentials on paper, sent by certified mail.
+
+This is the load-bearing end of "they keep their keys". Every other form of return depends on something: an export file needs a device, a vault transfer needs an account, a link needs us to still be running. Paper in a hand needs nothing, which is the only version of the promise that survives the company disappearing.
+
+Certified mail is doing real work too, not just formality. The grant was recorded — a named person, a timestamp, a delivery address. The return should be recorded to the same standard, and a delivery receipt is the paper equivalent of the click.
+
+### What it demands
+
+**This is the one command that deliberately emits secrets in bulk**, and it should be built like it. Everything else in Lucky exists to keep values from being seen, pasted, logged, or written down; this prints all of them at once.
+
+- Nothing to disk. Straight to a print stream, or a document the operator is told to destroy after posting.
+- Explicit, unmissable confirmation naming the person and the number of credentials.
+- Its own record: who asked, which credentials, when, which address. The handover is an event in the customer's history, not a quiet read.
+- The printed sheet needs the vendor and what each credential is for, not just values — a page of secrets nobody can attribute is not a handover.
+- An obvious statement on the page that these are live credentials and should be rotated, because from the moment it is posted the customer is the only one who controls them.
+
+**After it, say so.** What Lucky then holds is a copy, not the only copy, and if the relationship is ending the credentials should be removed from the working set and the consent withdrawn. Archived, not deleted — the record of what was held outlives the holding.
 
 ---
 
