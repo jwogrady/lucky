@@ -14,11 +14,19 @@ import (
 // The plan ceiling, measured one SDK call at a time.
 //
 // v1 runs on an individual account and upgrades only when the API is genuinely
-// exhausted, so where the API stops is a fact the plan depends on. It is not a
-// published fact: 1password.dev documents what the SDKs do, not what each plan
-// permits, and the pricing pages describe an organization sharing credentials
-// internally — which is not the shape being built here. So each call gets a
-// test, and the answer comes from the API rather than from marketing.
+// exhausted, so where the API stops is a fact the plan depends on.
+//
+// Two different things stop a call, and only one of them is documented.
+// 1password.dev/sdks/functionality lists what the SDK implements — sharing,
+// password generation and group vault permissions are in; listing or creating
+// groups, user vault permissions and everything about users are out. What it
+// does not say is what any given account is *permitted* to do, and the pricing
+// pages are no help because they describe an organization sharing credentials
+// internally, which is not the shape being built here.
+//
+// So this measures the second axis only: given that the SDK implements a call,
+// does this token get to make it. Anything the SDK does not implement has no
+// test here, because a compile error is a clearer answer than a probe.
 //
 // Two kinds of test live here, and the difference is the point:
 //
@@ -234,6 +242,11 @@ func TestCeilingItemsArchive(t *testing.T) {
 // this is the likeliest wall on an individual account — and the error text is
 // the finding, because a plan-level refusal reads differently from "no such
 // group".
+//
+// Retrieve is all the SDK offers: listing groups, creating them and changing
+// membership are documented as unimplemented. So even where this is allowed,
+// the groups themselves get made by hand in the web UI and Lucky only grants
+// them vault permissions afterwards.
 func TestCeilingGroupsGet(t *testing.T) {
 	client, _, _ := ceiling(t)
 	_, err := client.Groups().Get(t.Context(), "00000000000000000000000000", onepassword.GroupGetParams{})
