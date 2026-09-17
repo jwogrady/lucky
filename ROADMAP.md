@@ -75,6 +75,33 @@ lucky new cred         a credential that is not an API key
 
 ---
 
+## First use case: the transposing case
+
+The phone rings. The customer says "log into my GoDaddy account and change a phone number on my website." The answer is: sure — who are you? I need to complete your Lucky profile so you can read me the information over the phone.
+
+**The credential is transposed through the operator, verbally.** It is not emailed, not pasted, not linked. The customer says it and the operator types it.
+
+This is the first case to satisfy because it needs nothing that does not exist: no magic link, no API, no service to send anything. It is also the case that actually happens.
+
+### What it demands
+
+**The profile comes first, and it is the natural moment for it.** "Who are you" is not a formality on a phone call, it is the question you would ask anyway. The person on the line is the one granting access, so the profile is captured while they are there to answer — and the grant is attributable to them from the start rather than reconstructed later.
+
+**The credential is usually a login, not an API key.** Nobody dictates an API key over the phone for GoDaddy; they read out the username and password they use. The catalog has `godaddy api` — a key and secret from the developer portal — and no login shape at all. This is what `lucky new cred` is for, and the transposing case is why it exists alongside `new api`.
+
+**Transcription is the failure mode.** Every other intake path either pastes the exact bytes or has the owner type them. This one goes through a human ear and a human keyboard: `b`/`p`/`d`/`e` are the same sound, and `0`/`O` and `1`/`l`/`I` are the same character read aloud. A mistyped credential is indistinguishable from a revoked one at the moment of entry.
+
+**So verification has to happen before the call ends.** This is the strongest argument for `lucky verify` existing at all. If the credential fails, the person who can read it again is still on the line — five minutes later they are not, and the failure becomes a callback, a second appointment, and a customer who has been asked twice. Verification is not a report in this case. It is the transcription check.
+
+### Consequences
+
+- A login shape in the catalog: username, password, and where to use them. Credentials people speak aloud, rather than credentials consoles issue.
+- Verification for a login is not an API call. Proving a username and password means a sign-in, which is a different mechanism from the `verify` stanza and may not be available at all. Where it is not, the honest report is `unchecked` — and the operator needs to be told that while the customer is still on the phone, not afterwards.
+- Read-back before writing. The confirmation screen already describes a value without revealing it; a dictated value wants the opposite — the operator reading it back to the customer to confirm, which is safe precisely because the customer already knows it.
+- The profile fields need to be answerable aloud, in order, without the operator navigating a form while listening.
+
+---
+
 ## The boundary is the person
 
 An earlier version of this document said the customer's vault is the boundary, and scoped a Cosmic to it. That is still how storage is arranged, but it named the wrong thing as the boundary.
