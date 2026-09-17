@@ -68,15 +68,21 @@ func (a App) forCommand(account *string) *cobra.Command {
 			case !held && key == "":
 				// Nothing by that name and no key named: take the whole thing
 				// down now, however many pairs it turns out to have.
+				if err := a.requirePerson(cmd, client, vaultID, user, items); err != nil {
+					return err
+				}
 				return a.takeDown(cmd, client, vaultID, user, name, nil, plain, items)
 			case !held:
+				if err := a.requirePerson(cmd, client, vaultID, user, items); err != nil {
+					return err
+				}
 				return a.takeDown(cmd, client, vaultID, user, name, []string{key}, plain, items)
 			case key == "" && asEnv:
 				return a.asEnv(cmd, client, vaultID, item)
 			case key == "":
 				return a.whatsOnIt(cmd, client, vaultID, item)
 			}
-			return a.handOverOrAdd(cmd, client, vaultID, user, item, key, plain)
+			return a.handOverOrAdd(cmd, client, vaultID, user, item, key, plain, items)
 		},
 	}
 	cmd.Flags().BoolVar(&plain, "plain", false, "store readable — for an endpoint or a username, which are not secrets")
@@ -88,6 +94,54 @@ func (a App) forCommand(account *string) *cobra.Command {
 // set, with the same behaviour as naming them explicitly.
 func (a App) forWorkingVault(cmd *cobra.Command, account *string, working string, args []string) error {
 	return a.forCommand(account).RunE(cmd, append([]string{working}, args...))
+}
+
+// requirePerson makes sure the vault names somebody before it holds a
+// credential for them.
+//
+// Every credential in a vault was granted by a person, and the day a grant is
+// questioned the answer has to be a name, an address and a number. A vault
+// filling up with secrets that nobody is attached to is how that answer stops
+// existing — and it stops existing quietly, because nothing fails at the time.
+//
+// It collects rather than refuses. Refusing is correct in principle and wrong
+// on a phone call: the customer is mid-sentence and the operator is not going
+// to stop, run another command, and ask them to start again. Four questions
+// answerable from the top of their email is the whole cost.
+func (a App) requirePerson(cmd *cobra.Command, client Client, vaultID, user string, items []Item) error {
+	for _, item := range items {
+		if strings.EqualFold(strings.TrimSpace(item.Title), credential.ProfileTitle) {
+			return nil
+		}
+	}
+	creator, ok := client.(credential.Creator)
+	if !ok {
+		return fmt.Errorf("%s has no profile yet, and this client cannot create one", user)
+	}
+	fmt.Fprintf(a.Err, "hold on — i don't know who %s is yet.\n", user)
+	fmt.Fprintf(a.Err, "every key in here was handed over by somebody. who?\n\n")
+
+	p := prompt.New(a.in(), a.Err)
+	fields := credential.PersonFields()
+	values := map[string]string{}
+	for _, spec := range fields {
+		v, err := p.Line(spec.Label, spec.Help, false)
+		if err != nil {
+			return err
+		}
+		if strings.TrimSpace(v) == "" {
+			return fmt.Errorf("%s is required before %s can hold a credential", spec.Label, user)
+		}
+		values[spec.Label] = strings.TrimSpace(v)
+	}
+	item := credential.ProfileItem(vaultID, user, values)
+	item.Fields = fields
+	if _, err := creator.Create(cmd.Context(), item); err != nil {
+		return err
+	}
+	fmt.Fprintf(a.Err, "\ngot it — %s %s is who i'll name. fill the rest in later with: lucky profile %s\n\n",
+		values["first name"], values["last name"], user)
+	return nil
 }
 
 func (a App) workFor(user string) error {
@@ -181,7 +235,7 @@ func shellQuote(v string) string {
 }
 
 // handOverOrAdd returns the value if it is there, and takes it down if it is not.
-func (a App) handOverOrAdd(cmd *cobra.Command, client Client, vaultID, user string, item Item, key string, plain bool) error {
+func (a App) handOverOrAdd(cmd *cobra.Command, client Client, vaultID, user string, item Item, key string, plain bool, items []Item) error {
 	inspector, ok := client.(credential.Inspector)
 	if !ok {
 		return fmt.Errorf("this client cannot read item fields")
@@ -205,6 +259,9 @@ func (a App) handOverOrAdd(cmd *cobra.Command, client Client, vaultID, user stri
 	updater, ok := client.(credential.Updater)
 	if !ok {
 		return fmt.Errorf("this client cannot add a key to an existing credential")
+	}
+	if err := a.requirePerson(cmd, client, vaultID, user, items); err != nil {
+		return err
 	}
 	fmt.Fprintf(a.Err, "%s has no key called %q.\n", item.Title, key)
 	if labels := keyLabels(fields); len(labels) > 0 {

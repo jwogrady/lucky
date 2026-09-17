@@ -34,6 +34,10 @@ import (
 	"github.com/jwogrady/lucky/credential"
 )
 
+// Both backends implement the entire custodian surface. If one falls behind,
+// this stops compiling rather than failing in front of a customer.
+var _ credential.Custodian = (*Client)(nil)
+
 type Client struct {
 	bin string
 }

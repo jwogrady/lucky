@@ -92,12 +92,20 @@ type Creator interface {
 }
 
 // Custodian is the full surface, for operator tooling that needs all of it.
+//
+// Every backend implements the whole of it, asserted at compile time in each
+// package. That is the normalisation Lucky exists to provide: which transport
+// reached 1Password is an authentication detail, and it must not change what a
+// credential does. A capability present on one backend and missing on another
+// turns "can Lucky add a key to this?" into a question about the operator's
+// environment, answerable only by trying it.
 type Custodian interface {
 	Client
 	Creator
 	Archiver
 	Provisioner
 	Inspector
+	Updater
 }
 
 // ProfileFields are the customer and business details captured before any
@@ -115,21 +123,54 @@ type Custodian interface {
 // is how they drift.
 func ProfileFields() []FieldSpec {
 	return []FieldSpec{
+		// The person in charge of the vault comes first, because they are who
+		// the work is actually with. Every credential in here was granted by
+		// somebody, and on the day a grant is questioned the answer has to be a
+		// name, an address and a number — not a business.
+		//
+		// Their email and mobile are separate from the business's on purpose.
+		// AG Danforth Solutions publishes contactagdanforthsolutions@gmail.com
+		// and its owner sends from hcpaulsen4@gmail.com; the grant arrived from
+		// the personal address, so that is the address that authenticated him.
+		// Collapsing the two would lose exactly the one that matters.
+		{Label: "first name", Help: "the person in charge of this vault"},
+		{Label: "last name"},
+		{Label: "email", Help: "the address they actually write from"},
+		{Label: "mobile", Help: "where a text reaches them"},
+
 		{Label: "business name", Help: "the legal name"},
 		{Label: "dba", Optional: true, Help: "trading name, if different"},
 		{Label: "domain", Help: "e.g. wetheplumberstx.com"},
-		{Label: "phone"},
-		{Label: "email"},
+		{Label: "business phone", Optional: true},
+		{Label: "business email", Optional: true, Help: "the published address, if different from theirs"},
 		{Label: "street", Optional: true},
 		{Label: "city"},
 		{Label: "state"},
 		{Label: "postal code"},
 		{Label: "service area", Optional: true, Help: "counties or cities served, comma separated"},
 		{Label: "google place id", Optional: true, Help: "from the Business Profile listing"},
-		{Label: "owner", Optional: true, Help: "who signs off"},
 		{Label: "timezone", Default: "America/Chicago", Optional: true},
 	}
 }
+
+// PersonFields are the four things Lucky needs before it will hold a credential
+// for somebody: who to name when a grant is questioned, and how to reach them.
+//
+// It is deliberately short. The full profile asks sixteen questions, which is
+// the right number when somebody is being taken on and the wrong number when
+// they are halfway through reading out a password. These four can be answered
+// from the top of an email.
+func PersonFields() []FieldSpec {
+	return []FieldSpec{
+		{Label: "first name", Help: "the person in charge of this vault"},
+		{Label: "last name"},
+		{Label: "email", Help: "the address they actually write from"},
+		{Label: "mobile", Help: "where a text reaches them"},
+	}
+}
+
+// ProfileTitle is the item every vault must hold before it holds a credential.
+const ProfileTitle = "cosmic profile"
 
 // ProfileItem builds the vault item holding a customer's profile.
 func ProfileItem(vaultID, vaultName string, values map[string]string) NewItem {
@@ -137,7 +178,7 @@ func ProfileItem(vaultID, vaultName string, values map[string]string) NewItem {
 		VaultID: vaultID, VaultName: vaultName,
 		Provider: "cosmic", Service: "profile",
 		Fields: ProfileFields(), Values: values,
-		Notes: "Customer and business profile. Non-secret; the vault is the customer boundary.",
+		Notes: "Customer and business profile, and the person in charge of this vault. Non-secret; the account owns the vault and this person controls it.",
 	}
 }
 

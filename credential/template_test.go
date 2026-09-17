@@ -105,7 +105,12 @@ func TestValidateRequiresNonOptionalFields(t *testing.T) {
 }
 
 func TestProfileItemIsNotSecretAndTitlesConsistently(t *testing.T) {
-	item := ProfileItem("v1", "wtp", map[string]string{"business name": "We The Plumbers", "domain": "x.com", "phone": "1", "email": "a@b.c", "city": "Conroe", "state": "TX", "postal code": "77301"})
+	item := ProfileItem("v1", "agds", map[string]string{
+		"first name": "Hank", "last name": "Paulsen",
+		"email": "hcpaulsen4@example.com", "mobile": "940-555-0100",
+		"business name": "AG Danforth Solutions", "domain": "agdanforthsolutions.com",
+		"city": "Conroe", "state": "TX", "postal code": "77301",
+	})
 	if item.Title() != "cosmic profile" {
 		t.Fatalf("title %q", item.Title())
 	}
@@ -117,8 +122,28 @@ func TestProfileItemIsNotSecretAndTitlesConsistently(t *testing.T) {
 	if err := item.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(item.Notes, "customer boundary") {
-		t.Error("profile should record why it lives in the vault")
+	if !strings.Contains(item.Notes, "controls it") {
+		t.Error("profile should record that a person controls the vault the account owns")
+	}
+	// The person in charge comes first: they are who the work is with, and
+	// whose name answers for every grant in the vault.
+	if item.Fields[0].Label != "first name" {
+		t.Errorf("the person should lead the profile, got %q", item.Fields[0].Label)
+	}
+	// Their address is not the business's published one. The AGDS grant
+	// arrived from the owner's personal address, which is the one that
+	// authenticated him.
+	var personal, published bool
+	for _, f := range item.Fields {
+		switch f.Label {
+		case "email":
+			personal = true
+		case "business email":
+			published = true
+		}
+	}
+	if !personal || !published {
+		t.Error("the person's address and the business's must both exist, separately")
 	}
 }
 

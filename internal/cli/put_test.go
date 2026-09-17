@@ -114,7 +114,12 @@ func TestEnvLineQuotingFollowsTheStoredValue(t *testing.T) {
 }
 
 func TestProfileIsStoredWithNoSecretFields(t *testing.T) {
-	in := "We The Plumbers\n\nwetheplumberstx.com\n936-555-0100\na@b.com\n\nConroe\nTX\n77301\n\n\n\n\n"
+	// first, last, email, mobile, business name, dba, domain, business phone,
+	// business email, street, city, state, postal code, service area,
+	// place id, timezone
+	in := "Hank\nPaulsen\nhcpaulsen4@example.com\n940-555-0100\n" +
+		"AG Danforth Solutions\n\nagdanforthsolutions.com\n\n\n\n" +
+		"Conroe\nTX\n77301\n\n\n\n"
 	app, _, _, c := custodianApp(in)
 	if err := app.Run(context.Background(), []string{"profile", "--vault", "wtp", "--yes"}); err != nil {
 		t.Fatal(err)
@@ -122,8 +127,11 @@ func TestProfileIsStoredWithNoSecretFields(t *testing.T) {
 	if c.created.Title() != "cosmic profile" {
 		t.Fatalf("title %q", c.created.Title())
 	}
-	if c.created.Values["business name"] != "We The Plumbers" || c.created.Values["city"] != "Conroe" {
+	if c.created.Values["business name"] != "AG Danforth Solutions" || c.created.Values["city"] != "Conroe" {
 		t.Fatalf("profile not captured: %+v", c.created.Values)
+	}
+	if c.created.Values["first name"] != "Hank" || c.created.Values["mobile"] != "940-555-0100" {
+		t.Fatalf("the person in charge was not captured: %+v", c.created.Values)
 	}
 	for _, f := range c.created.Fields {
 		if f.Secret {

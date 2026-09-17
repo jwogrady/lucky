@@ -13,6 +13,10 @@ import (
 
 type Config struct{ Account, Version string }
 
+// Both backends implement the entire custodian surface. If one falls behind,
+// this stops compiling rather than failing in front of a customer.
+var _ credential.Custodian = (*Client)(nil)
+
 type Client struct {
 	sdk         *onepassword.Client
 	mode, token string
