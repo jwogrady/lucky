@@ -33,7 +33,7 @@ type VaultSetter interface {
 // One credential holds as many keys as it needs — an endpoint, a username and
 // three tokens are one thing to a person, so they are one item here.
 func (a App) forCommand(account *string) *cobra.Command {
-	var plain bool
+	var plain, asEnv bool
 	cmd := &cobra.Command{
 		Use:   "for <user> [credential] [key...]",
 		Short: "Work for someone: hand over a credential, or take one down",
@@ -71,6 +71,8 @@ func (a App) forCommand(account *string) *cobra.Command {
 				return a.takeDown(cmd, client, vaultID, user, name, nil, plain, items)
 			case !held:
 				return a.takeDown(cmd, client, vaultID, user, name, []string{key}, plain, items)
+			case key == "" && asEnv:
+				return a.asEnv(cmd, client, vaultID, item)
 			case key == "":
 				return a.whatsOnIt(cmd, client, vaultID, item)
 			}
@@ -78,6 +80,7 @@ func (a App) forCommand(account *string) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&plain, "plain", false, "store readable — for an endpoint or a username, which are not secrets")
+	cmd.Flags().BoolVar(&asEnv, "env", false, "print every key as an environment variable, for a process that needs all of them")
 	return cmd
 }
 
@@ -122,6 +125,53 @@ func (a App) whatsOnIt(cmd *cobra.Command, client Client, vaultID string, item I
 		fmt.Fprintf(a.Err, "  nothin' on it yet\n")
 	}
 	return nil
+}
+
+// asEnv prints every key of one credential as an environment assignment.
+//
+// A credential is rarely useful one key at a time. Calling BLARE's endpoint
+// needs the user, the key and the endpoint together, and fetching them with
+// three separate invocations means three chances to pair the wrong ones and a
+// secret sitting in a shell variable in between.
+//
+// Values are single-quoted with any inner quote escaped, because the quoting
+// has to survive whatever the value contains — and what arrives by voice, email
+// or photograph contains anything.
+//
+// This is the weaker half of a pair. `lucky run` puts these into one child
+// process and nowhere else; this prints them, so whatever consumes the output
+// owns them from that point. Prefer run where a command can be wrapped.
+func (a App) asEnv(cmd *cobra.Command, client Client, vaultID string, item Item) error {
+	inspector, ok := client.(credential.Inspector)
+	if !ok {
+		return fmt.Errorf("this client cannot read item fields")
+	}
+	fields, err := inspector.ItemFields(cmd.Context(), vaultID, item.ID)
+	if err != nil {
+		return err
+	}
+	for _, f := range fields {
+		if !f.Secret && strings.TrimSpace(f.Value) == "" {
+			continue
+		}
+		value := f.Value
+		if f.Secret {
+			if value, err = client.Resolve(cmd.Context(), f.Reference); err != nil {
+				return err
+			}
+		}
+		fmt.Fprintf(a.Out, "%s=%s\n", envName(item.Title, f.Label), shellQuote(value))
+	}
+	return nil
+}
+
+func envName(item, key string) string {
+	name := notVarChar.ReplaceAllString(strings.ToUpper(item+"_"+key), "_")
+	return strings.Trim(name, "_")
+}
+
+func shellQuote(v string) string {
+	return "'" + strings.ReplaceAll(v, "'", `'\''`) + "'"
 }
 
 // handOverOrAdd returns the value if it is there, and takes it down if it is not.
