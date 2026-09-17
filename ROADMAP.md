@@ -61,6 +61,44 @@ Lucky can authenticate, inspect the `wtp` vault, and resolve a known reference w
 
 ---
 
+## Command surface: `lucky new <noun>`
+
+The operator commands grew one verb at a time — `new-customer`, `profile`, `put` — and the names do not say that they are the same act at different scopes. The surface becomes:
+
+```text
+lucky new profile      a person: first name, last name, email, mobile
+lucky new api          a vendor API credential
+lucky new cred         a credential that is not an API key
+```
+
+`profile` currently means a *business* record — name, dba, domain, address, service area. Under the new surface a profile is a **person**, and the business record needs its own noun. Both are wanted; they are not the same thing and should not share a name.
+
+---
+
+## Magic-link credential intake
+
+**The customer enters their own credential. The operator never handles it.**
+
+A profile — first name, last name, email, mobile — is what Lucky needs to send a magic link. The link opens a secure field where the customer enters and authorizes the credential themselves. It lands in their vault, and Lucky hands back a reference as it does today.
+
+This removes the operator from the secret's path entirely. Today a credential arrives by email or text, sits in an inbox, and gets pasted into a terminal by someone who is not its owner; `put` makes that moment as safe as it can be, but the copy in the inbox still exists and the operator still saw the value. A link the customer fills in has no such copy.
+
+It also changes what "authorize" means. The customer is the party who actually holds authority with the vendor, so the credential arrives already granted by the person entitled to grant it, rather than relayed by someone acting on their behalf.
+
+### Open questions
+
+- What serves the link, given Lucky is a CLI. This implies the v0.7 API arriving earlier, or a narrow purpose-built endpoint before it.
+- Link lifetime, single use, and what happens to a link that is never opened.
+- Whether the mobile number is a second factor on the link or only a contact route.
+- What the customer sees: a bare field, or the template's `where` text guiding them to the right console page.
+- Where the audit record of "who authorized what, when" lives, given it is not secret and the vault is the customer boundary.
+
+### Relationship to v0.3
+
+v0.3 is "Lucky can share" — handing a credential *out* securely. This is the same problem in the other direction: taking one *in* securely. They likely share a mechanism and should be designed together.
+
+---
+
 ## v0.2 — Lucky takes the keys
 
 Goal: make Lucky the standard path for entering and maintaining customer credentials.
