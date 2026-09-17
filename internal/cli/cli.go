@@ -65,8 +65,30 @@ func (a App) Run(ctx context.Context, args []string) error {
 
 func (a App) command() *cobra.Command {
 	account := os.Getenv("LUCKY_OP_ACCOUNT")
-	root := &cobra.Command{Use: "lucky", Short: "CosmOS credential custodian", SilenceErrors: true, SilenceUsage: true, Args: cobra.NoArgs}
-	root.RunE = func(cmd *cobra.Command, _ []string) error { return a.brief(cmd, account) }
+	root := &cobra.Command{Use: "lucky", Short: "CosmOS credential custodian", SilenceErrors: true, SilenceUsage: true, Args: cobra.ArbitraryArgs}
+	// Bare words go to the customer Lucky is already working for:
+	//
+	//	lucky for status26       once
+	//	lucky blare api key      every time after
+	//
+	// Typing speed is the whole point of this surface. A person on a phone call
+	// should not be retyping the customer's name into every lookup, and the
+	// context is already set and already persisted.
+	//
+	// It stays unambiguous because a subcommand always wins — cobra matches
+	// those before RunE is reached — and because it only fires when a working
+	// customer exists. With none set it says so rather than guessing which of
+	// the words was meant to be the customer.
+	root.RunE = func(cmd *cobra.Command, args []string) error {
+		if len(args) == 0 {
+			return a.brief(cmd, account)
+		}
+		working := a.defaultVault()
+		if working == "" {
+			return fmt.Errorf("no customer set: run `lucky for <customer>` first, or name one: `lucky for <customer> %s`", strings.Join(args, " "))
+		}
+		return a.forWorkingVault(cmd, &account, working, args)
+	}
 	root.SetOut(a.Out)
 	root.SetErr(a.Err)
 	root.PersistentFlags().StringVar(&account, "account", account, "1Password account name or UUID for desktop authentication")

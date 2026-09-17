@@ -84,6 +84,12 @@ func (a App) forCommand(account *string) *cobra.Command {
 	return cmd
 }
 
+// forWorkingVault is `lucky <credential> [key...]` against the customer already
+// set, with the same behaviour as naming them explicitly.
+func (a App) forWorkingVault(cmd *cobra.Command, account *string, working string, args []string) error {
+	return a.forCommand(account).RunE(cmd, append([]string{working}, args...))
+}
+
 func (a App) workFor(user string) error {
 	setter, ok := a.Config.(VaultSetter)
 	if !ok {
