@@ -34,6 +34,43 @@ Neither is a reason not to do it. They are reasons the person boundary, the cons
 
 ---
 
+## Structure instead of a naming convention
+
+The `wtp` vault records an attempt to find a naming convention, and what it actually shows is why one was needed:
+
+```text
+Housecall Pro API key             vendor + what it is
+Google Maps browser key           vendor + which key
+mandrill: cosmic-wtp              vendor : which project
+Service Account Auth Token: wtp   what it is : what it is for
+GitHub CLI - jwogrady             what it is - whose
+cpanel_titan                      what it is _ which server
+```
+
+Five separators — space, colon, dash, underscore — in twelve items. That is not carelessness. Each title is a hierarchy flattened into one string because there was nowhere else to put it, and the separator changes because the relationship being expressed changes.
+
+**A naming convention is what you need when the structure has nowhere to live.** 1Password provides four levels and Lucky's taxonomy uses them:
+
+| level | 1Password | what it holds |
+|---|---|---|
+| account | vault | `status26` — who owns these |
+| credential | item | `blare` — the system |
+| group | section | `prod` — the variant, where there is one |
+| key | field | `user`, `api key`, `endpoint` |
+
+`mandrill: cosmic-wtp` is an item and a section. `cpanel_titan` is an item and a section. `GitHub CLI - jwogrady` is an item whose "whose" belongs to the person controlling the vault, not the title.
+
+Put the structure in the structure and the name is just a name — one word, the system as a person would say it, no separator to choose.
+
+### What follows
+
+- No convention to enforce, document, or explain to the next operator.
+- References read as what they are: `op://status26/blare/prod/api key`.
+- `inventory` matches loosely today precisely because titles are unpredictable. As structure replaces convention, matching can tighten instead of getting cleverer.
+- Existing items are not wrong and do not need rewriting to be usable. Lucky can point out where a title is carrying structure and suggest the split, but it cannot make that call — only a person knows whether `titan` is a server, a customer or a nickname.
+
+---
+
 ## Owned by the account, controlled by people
 
 Ownership and control are separate, and conflating them was the mistake in "the boundary is the person".
