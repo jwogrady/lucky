@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	onepassword "github.com/1password/onepassword-sdk-go"
-	"github.com/jwogrady/lucky/internal/credential"
+	"github.com/jwogrady/lucky/credential"
 )
 
 type Config struct{ Account, Version string }
@@ -69,7 +69,7 @@ func (c *Client) Items(ctx context.Context, vaultID string) ([]credential.Item, 
 }
 
 func (c *Client) Resolve(ctx context.Context, reference string) (string, error) {
-	if err := ValidateReference(reference); err != nil {
+	if err := credential.ValidateReference(reference); err != nil {
 		return "", err
 	}
 	if err := onepassword.Secrets.ValidateSecretReference(ctx, reference); err != nil {
@@ -80,26 +80,6 @@ func (c *Client) Resolve(ctx context.Context, reference string) (string, error) 
 		return "", safeError("could not resolve secret reference", err, c.token, reference)
 	}
 	return secret, nil
-}
-
-func ValidateReference(reference string) error {
-	if !strings.HasPrefix(reference, "op://") {
-		return errors.New("secret reference must start with op://")
-	}
-	rest := strings.TrimPrefix(reference, "op://")
-	if strings.ContainsAny(rest, "?#\\") {
-		return errors.New("secret reference contains unsupported characters")
-	}
-	parts := strings.Split(rest, "/")
-	if len(parts) < 3 || len(parts) > 4 {
-		return errors.New("secret reference must be op://vault/item/field or op://vault/item/section/field")
-	}
-	for _, part := range parts {
-		if strings.TrimSpace(part) == "" || part == "." || part == ".." {
-			return errors.New("secret reference contains an empty or invalid segment")
-		}
-	}
-	return nil
 }
 
 func safeError(action string, err error, secrets ...string) error {

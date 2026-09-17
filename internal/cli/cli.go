@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/jwogrady/lucky/internal/credential"
+	"github.com/jwogrady/lucky/credential"
 	"github.com/spf13/cobra"
 )
 

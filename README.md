@@ -26,6 +26,26 @@ export OP_SERVICE_ACCOUNT_TOKEN='...'
 
 Desktop authentication requires the 1Password desktop app's SDK integration setting and a CGO-enabled build. Service-account authentication takes precedence when `OP_SERVICE_ACCOUNT_TOKEN` is present.
 
+## Use Lucky as a library
+
+```go
+import (
+    "github.com/jwogrady/lucky"
+    "github.com/jwogrady/lucky/credential"
+)
+
+client, err := lucky.New(ctx, lucky.Options{Account: os.Getenv("LUCKY_OP_ACCOUNT")})
+secret, err := client.Resolve(ctx, "op://wtp/Housecall Pro API key/credential")
+```
+
+`credential.Client` and `lucky.New` are the entire public surface. The 1Password
+SDK, the authentication modes, and the redaction of secrets out of error text
+live in `internal/`, where a consumer can neither see them nor depend on them.
+
+`credential.ValidateReference` checks the shape of an `op://` reference without
+contacting any provider, so a consumer can reject a malformed reference that
+came from configuration before it authenticates.
+
 See [ROADMAP.md](ROADMAP.md) for scope and service boundaries.
 
 Lucky owns credential custody only. Connections decides which vendor, service, and resource a credential authorizes; Collect retrieves authorized business data and writes it to Cosmic storage. Those services are deliberately outside this repository.
