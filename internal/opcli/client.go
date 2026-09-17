@@ -230,6 +230,52 @@ func (c *Client) Create(ctx context.Context, item credential.NewItem) (credentia
 	return credential.Created{ID: created.ID, Title: created.Title, VaultName: item.VaultName, Fields: stored}, nil
 }
 
+// AddField adds one key to an existing credential.
+//
+// op's own help is explicit that assignment arguments are the wrong tool here:
+//
+//	Caution: Command arguments can be visible to other
+//	processes on your machine.
+//
+// So the item is read, the field appended, and the whole thing piped back on
+// stdin — the same rule Create follows. The value never appears in argv, in
+// shell history, or in ps output, and never touches disk on the way.
+func (c *Client) AddField(ctx context.Context, vaultID, itemID string, spec credential.FieldSpec, value string) error {
+	raw, err := c.run(ctx, "item", "get", itemID, "--vault", vaultID, "--format", "json")
+	if err != nil {
+		return err
+	}
+	var item opItem
+	if err := json.Unmarshal(raw, &item); err != nil {
+		return fmt.Errorf("could not read the item: %w", err)
+	}
+	fieldType := "STRING"
+	if spec.Secret {
+		fieldType = "CONCEALED"
+	}
+	id := strings.ReplaceAll(strings.ToLower(strings.TrimSpace(spec.Label)), " ", "_")
+	var replaced bool
+	for i := range item.Fields {
+		if strings.EqualFold(item.Fields[i].Label, spec.Label) || item.Fields[i].ID == id {
+			item.Fields[i].Value = value
+			item.Fields[i].Type = fieldType
+			replaced = true
+			break
+		}
+	}
+	if !replaced {
+		item.Fields = append(item.Fields, opItemField{ID: id, Label: spec.Label, Type: fieldType, Value: value})
+	}
+	body, err := json.Marshal(item)
+	if err != nil {
+		return err
+	}
+	if _, err := c.runWith(ctx, bytes.NewReader(body), "item", "edit", itemID, "--vault", vaultID, "--format", "json"); err != nil {
+		return errors.New(strings.ReplaceAll(err.Error(), value, "[REDACTED]"))
+	}
+	return nil
+}
+
 // Archive retires an item without deleting it.
 func (c *Client) Archive(ctx context.Context, vaultID, itemID string) error {
 	_, err := c.run(ctx, "item", "delete", itemID, "--vault", vaultID, "--archive")

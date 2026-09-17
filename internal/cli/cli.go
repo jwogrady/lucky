@@ -141,9 +141,24 @@ func (a App) command() *cobra.Command {
 	root.AddCommand(a.putCommand(&account))
 	root.AddCommand(a.inventoryCommand(&account))
 	root.AddCommand(a.verifyCommand(&account))
+	root.AddCommand(a.forCommand(&account))
 	root.AddCommand(a.archiveCommand(&account))
 	root.AddCommand(a.newVaultCommand(&account))
 	return root
+}
+
+// vaultFrom picks the vault a command should act on.
+//
+// The vault is the one argument every operator command needs, so it reads as a
+// positional: `lucky put blare`, matching `lucky new-customer "Blare"`. The
+// flag still works, and a configured default still applies, in that order —
+// what you typed on this invocation beats what you typed in a config file
+// last month.
+func vaultFrom(args []string, flag, configured string) string {
+	if len(args) > 0 && strings.TrimSpace(args[0]) != "" {
+		return strings.TrimSpace(args[0])
+	}
+	return orDefault(flag, configured)
 }
 
 func resolveVault(ctx context.Context, client Client, wanted string) (string, error) {

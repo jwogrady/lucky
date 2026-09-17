@@ -67,19 +67,19 @@ func (a App) profileCommand(account *string) *cobra.Command {
 	var vaultName string
 	var assumeYes bool
 	cmd := &cobra.Command{
-		Use:   "profile",
+		Use:   "profile [vault]",
 		Short: "Capture a customer's business profile into their vault",
 		Long: "Collect the customer and business details and store them in the customer's\n" +
 			"vault. None of it is secret. It lives there because the vault is the\n" +
 			"customer boundary, and identity belongs next to authority.",
-		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
 			client, creator, err := a.custodian(cmd.Context(), *account)
 			if err != nil {
 				return err
 			}
 			p := prompt.New(a.in(), a.Err)
-			if vaultName, err = required(p, orDefault(vaultName, a.defaultVault()), "vault", "the customer's vault"); err != nil {
+			if vaultName, err = required(p, vaultFrom(args, vaultName, a.defaultVault()), "vault", "the customer's vault"); err != nil {
 				return err
 			}
 			vaultID, err := resolveVault(cmd.Context(), client, vaultName)
@@ -106,14 +106,14 @@ func (a App) putCommand(account *string) *cobra.Command {
 	var vaultName, provider, service, notes string
 	var assumeYes bool
 	cmd := &cobra.Command{
-		Use:   "put",
+		Use:   "put [vault]",
 		Short: "Store a credential and get its op:// reference back",
 		Long: "Store a credential against a provider template and print its op:// references.\n\n" +
 			"The secret is read without being echoed, written straight to 1Password, and\n" +
 			"never placed on disk. What comes back is the reference, which is safe to\n" +
 			"paste into configuration and to commit.",
-		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
 			cat, err := a.catalog()
 			if err != nil {
 				return err
@@ -150,7 +150,7 @@ func (a App) putCommand(account *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if vaultName, err = required(p, orDefault(vaultName, a.defaultVault()), "vault", "the customer's vault"); err != nil {
+			if vaultName, err = required(p, vaultFrom(args, vaultName, a.defaultVault()), "vault", "the customer's vault"); err != nil {
 				return err
 			}
 			vaultID, err := resolveVault(cmd.Context(), client, vaultName)

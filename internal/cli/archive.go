@@ -20,10 +20,10 @@ func (a App) archiveCommand(account *string) *cobra.Command {
 	var vaultName, provider, service string
 	var assumeYes bool
 	cmd := &cobra.Command{
-		Use:   "archive",
+		Use:   "archive [vault]",
 		Short: "Retire a credential, keeping the record",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := a.NewClient(cmd.Context(), Config{Account: *account})
 			if err != nil {
 				return err
@@ -32,6 +32,7 @@ func (a App) archiveCommand(account *string) *cobra.Command {
 			if !ok {
 				return fmt.Errorf("this client cannot archive")
 			}
+			vaultName = vaultFrom(args, vaultName, a.defaultVault())
 			if strings.TrimSpace(vaultName) == "" || strings.TrimSpace(provider) == "" || strings.TrimSpace(service) == "" {
 				return fmt.Errorf("--vault, --provider and --service are required")
 			}

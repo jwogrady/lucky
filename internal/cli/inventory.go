@@ -22,10 +22,10 @@ func (a App) inventoryCommand(account *string) *cobra.Command {
 	var vaultName string
 	var missingOnly bool
 	cmd := &cobra.Command{
-		Use:   "inventory",
+		Use:   "inventory [vault]",
 		Short: "Show which provider credentials a vault holds, and which are missing",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
 			cat, err := a.catalog()
 			if err != nil {
 				return err
@@ -34,7 +34,7 @@ func (a App) inventoryCommand(account *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			vaultName = orDefault(vaultName, a.defaultVault())
+			vaultName = vaultFrom(args, vaultName, a.defaultVault())
 			if strings.TrimSpace(vaultName) == "" {
 				return fmt.Errorf("--vault is required")
 			}

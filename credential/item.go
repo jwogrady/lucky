@@ -20,6 +20,17 @@ type NewItem struct {
 	Values    map[string]string
 	Category  string
 	Notes     string
+
+	// Name titles the item directly, for a credential captured before anybody
+	// knows what it is.
+	//
+	// Provider and service are the right title when a template was chosen, and
+	// the wrong requirement when something has just arrived by voice, email,
+	// photograph or paper and needs to be somewhere safe before the call ends.
+	// Forcing a provider at that moment means either a wrong guess stored as
+	// fact, or an operator stopping to classify while a customer waits. The
+	// name they already used for it is better than both.
+	Name string
 }
 
 // Title is the item's name in the vault, and the middle segment of every
@@ -27,6 +38,9 @@ type NewItem struct {
 // by a person groups better by who owns the door than by what one consumer's
 // configuration happens to call the variable.
 func (n NewItem) Title() string {
+	if t := strings.TrimSpace(n.Name); t != "" {
+		return strings.ToLower(t)
+	}
 	return strings.TrimSpace(strings.ToLower(n.Provider + " " + n.Service))
 }
 
@@ -34,7 +48,7 @@ func (n NewItem) Validate() error {
 	if strings.TrimSpace(n.VaultID) == "" {
 		return fmt.Errorf("vault is required")
 	}
-	if strings.TrimSpace(n.Provider) == "" || strings.TrimSpace(n.Service) == "" {
+	if strings.TrimSpace(n.Name) == "" && (strings.TrimSpace(n.Provider) == "" || strings.TrimSpace(n.Service) == "") {
 		return fmt.Errorf("provider and service are required: together they are the item title")
 	}
 	if len(n.Fields) == 0 {

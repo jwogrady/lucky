@@ -41,10 +41,10 @@ func (a App) verifyCommand(account *string) *cobra.Command {
 	var vaultName, provider string
 	var timeout time.Duration
 	cmd := &cobra.Command{
-		Use:   "verify",
+		Use:   "verify [vault]",
 		Short: "Prove each credential in a vault against the system it is for",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
 			cat, err := a.catalog()
 			if err != nil {
 				return err
@@ -57,7 +57,7 @@ func (a App) verifyCommand(account *string) *cobra.Command {
 			if !ok {
 				return errors.New("this client cannot read item fields, which verification needs")
 			}
-			vaultName = orDefault(vaultName, a.defaultVault())
+			vaultName = vaultFrom(args, vaultName, a.defaultVault())
 			if strings.TrimSpace(vaultName) == "" {
 				return fmt.Errorf("--vault is required")
 			}

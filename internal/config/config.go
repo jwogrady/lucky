@@ -19,6 +19,8 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/pflag"
@@ -75,3 +77,59 @@ func (c *Config) OpBin() string     { return c.String(KeyOpBin) }
 // Used reports which config file was loaded, for `lucky status` to show. Empty
 // means none was found, which is fine.
 func (c *Config) Used() string { return c.v.ConfigFileUsed() }
+
+// Path is where settings are written, whether or not a file exists yet.
+func (c *Config) Path() (string, error) {
+	if used := c.v.ConfigFileUsed(); used != "" {
+		return used, nil
+	}
+	home, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, "lucky", "config.yaml"), nil
+}
+
+// SetVault persists which customer Lucky is working for and returns the file
+// it wrote.
+//
+// It rewrites only what a file already held, plus the new value. The live
+// viper knows more than that — flags, environment, built-in defaults — and
+// writing those out would quietly turn this invocation's `--account` or a
+// CI job's LUCKY_BACKEND into permanent settings on the operator's disk. A
+// config file should contain what somebody chose to put in it.
+func (c *Config) SetVault(name string) (string, error) {
+	path, err := c.Path()
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return "", err
+	}
+	out := viper.New()
+	out.SetConfigFile(path)
+	if err := out.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok && !os.IsNotExist(err) {
+			return "", err
+		}
+	}
+	if strings.TrimSpace(name) == "" {
+		// Viper cannot unset a key, so the file is rebuilt without it.
+		rebuilt := viper.New()
+		rebuilt.SetConfigFile(path)
+		for key, value := range out.AllSettings() {
+			if key != KeyVault {
+				rebuilt.Set(key, value)
+			}
+		}
+		out = rebuilt
+	} else {
+		out.Set(KeyVault, name)
+	}
+	if err := out.WriteConfigAs(path); err != nil {
+		return "", err
+	}
+	// Keep the running process consistent with what was just written.
+	c.v.Set(KeyVault, name)
+	return path, nil
+}

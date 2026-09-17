@@ -60,6 +60,16 @@ type Field struct {
 	Value     string // empty for every secret field
 }
 
+// Updater adds a key to a credential that already exists.
+//
+// Separate from Creator because they are different acts with different risks:
+// creating a credential cannot damage one, and adding a key to an existing item
+// rewrites it. A consumer that only ever files new credentials should not hold
+// the ability to rewrite old ones.
+type Updater interface {
+	AddField(ctx context.Context, vaultID, itemID string, field FieldSpec, value string) error
+}
+
 // Inspector reads the shape of a stored credential.
 //
 // It is separate from Client for the reason Creator is: most consumers resolve
