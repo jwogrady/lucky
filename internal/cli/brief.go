@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/jwogrady/lucky/credential"
 	"github.com/spf13/cobra"
@@ -68,9 +69,12 @@ func (a App) brief(cmd *cobra.Command, account string) error {
 
 	sort.Slice(vaults, func(i, j int) bool { return vaults[i].ItemCount > vaults[j].ItemCount })
 	var held []credential.Vault
+	var empty []string
 	for _, v := range vaults {
 		if v.ItemCount > 0 {
 			held = append(held, v)
+		} else {
+			empty = append(empty, v.Title)
 		}
 	}
 	if len(held) > 0 {
@@ -82,6 +86,13 @@ func (a App) brief(cmd *cobra.Command, account string) error {
 			}
 			fmt.Fprintf(a.Out, "  %s\t%d items\n", v.Title, v.ItemCount)
 		}
+	}
+	// An empty vault was invisible here, which got it exactly backwards: a
+	// vault with nothing in it is usually one just created for a customer, and
+	// it is the only thing on this screen with work outstanding.
+	if len(empty) > 0 {
+		sort.Strings(empty)
+		fmt.Fprintf(a.Out, "\nnothin' in 'em yet\n  %s\n", strings.Join(empty, ", "))
 	}
 
 	// The suggested vault is the configured default or a placeholder, never a

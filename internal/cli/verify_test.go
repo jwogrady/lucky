@@ -189,6 +189,11 @@ func TestBriefReportsWithoutGuessingAVault(t *testing.T) {
 	if !strings.Contains(out.String(), "the book") || !strings.Contains(out.String(), "the door") {
 		t.Fatalf("briefing lost its substance %q", out.String())
 	}
+	// An empty vault is usually one just created for a customer, and it is the
+	// only thing on the screen with work outstanding.
+	if !strings.Contains(out.String(), "nothin' in 'em yet") || !strings.Contains(out.String(), "wtp") {
+		t.Fatalf("empty vaults must be visible %q", out.String())
+	}
 	// No default vault is configured, so nothing may be proposed by name.
 	if !strings.Contains(both, "--vault <vault>") {
 		t.Fatalf("expected a placeholder, not a guess: %q", both)
