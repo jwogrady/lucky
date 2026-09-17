@@ -34,6 +34,28 @@ export OP_SERVICE_ACCOUNT_TOKEN='...'
 ./lucky get 'op://wtp/item/field'
 ```
 
+Run a command with a whole env file resolved into its environment:
+
+```bash
+./lucky run --env-file .env.op -- bun run dev
+```
+
+`lucky run` reads `KEY=op://vault/item/field` lines, resolves every reference
+before starting anything, and passes the values to the child process through its
+environment only. Values that are not references pass through literally, and a
+file containing no references never opens a 1Password session. Every reference
+that cannot be resolved is reported at once, by key, with the reference and the
+resolved values redacted; nothing is executed unless all of them resolve. The
+child's exit status becomes Lucky's. Unlike `lucky get`, `run` writes no secret
+to stdout, stderr, a log, or disk.
+
+References may be embedded in a larger value, which `op inject` supports and
+`op run` does not:
+
+```
+SUPABASE_DB_URL="postgresql://postgres.ref:op://wtp/Supabase/password@host:5432/postgres"
+```
+
 `lucky get` intentionally writes the resolved value—and nothing else—to stdout so it can be consumed by a process. Diagnostics go to stderr and sensitive inputs are redacted. Avoid terminal history and command tracing when consuming secrets.
 
 Desktop authentication requires the 1Password desktop app's SDK integration setting and a CGO-enabled build. Service-account authentication takes precedence when `OP_SERVICE_ACCOUNT_TOKEN` is present.

@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"sort"
 	"strings"
 
 	"github.com/jwogrady/lucky/credential"
+	"github.com/jwogrady/lucky/internal/envfile"
 	"github.com/spf13/cobra"
 )
 
@@ -43,9 +45,9 @@ type Item = credential.Item
 type Client = credential.Client
 
 type App struct {
+	In        io.Reader
 	Out       io.Writer
 	Err       io.Writer
-	In        io.Reader
 	Config    Defaults
 	NewClient func(context.Context, Config) (Client, error)
 
@@ -53,6 +55,13 @@ type App struct {
 	// normal case and means a real client; a test supplies its own.
 	HTTP Doer
 }
+
+// ExitError carries a child process's status so the caller can exit with it
+// instead of flattening every failure to 1. It is not a Lucky error and carries
+// no diagnostic of its own: the child has already reported whatever went wrong.
+type ExitError struct{ Code int }
+
+func (e *ExitError) Error() string { return fmt.Sprintf("command exited with status %d", e.Code) }
 
 func (a App) Run(ctx context.Context, args []string) error {
 	if a.Out == nil || a.Err == nil || a.NewClient == nil {
@@ -166,6 +175,36 @@ func (a App) command() *cobra.Command {
 	root.AddCommand(a.forCommand(&account))
 	root.AddCommand(a.archiveCommand(&account))
 	root.AddCommand(a.newVaultCommand(&account))
+
+	var envFile string
+	run := &cobra.Command{Use: "run --env-file FILE -- command [args...]", Short: "Run a command with op:// references resolved into its environment", Args: cobra.MinimumNArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+		if strings.TrimSpace(envFile) == "" {
+			return errors.New("--env-file is required")
+		}
+		file, err := os.Open(envFile)
+		if err != nil {
+			return err
+		}
+		entries, err := envfile.Parse(file)
+		file.Close()
+		if err != nil {
+			return fmt.Errorf("%s: %w", envFile, err)
+		}
+		resolved, err := resolveAll(cmd.Context(), func() (Client, error) { return client(cmd) }, entries)
+		if err != nil {
+			return err
+		}
+		// The resolved values leave this process only through the child's
+		// environment: never stdout, stderr, a log line, or disk.
+		env := os.Environ()
+		for _, e := range entries {
+			env = append(env, e.Key+"="+envfile.Expand(e.Value, resolved))
+		}
+		return a.exec(cmd.Context(), args, env)
+	}}
+	run.Flags().StringVar(&envFile, "env-file", "", "env file of op:// references to resolve")
+	run.Flags().SetInterspersed(false) // flags after the command belong to the child
+	root.AddCommand(run)
 	return root
 }
 
@@ -181,6 +220,84 @@ func vaultFrom(args []string, flag, configured string) string {
 		return strings.TrimSpace(args[0])
 	}
 	return orDefault(flag, configured)
+}
+
+// resolveAll resolves every reference before the child starts: a child holding a
+// partially resolved environment is worse than no child at all. It attempts all
+// of them and reports every failure at once, because a single stale item name
+// otherwise reads as "the vault is broken" rather than "this line is wrong".
+func resolveAll(ctx context.Context, newClient func() (Client, error), entries []envfile.Entry) (map[string]string, error) {
+	refs := map[string][]envfile.Entry{}
+	var order []string
+	for _, e := range entries {
+		for _, ref := range envfile.Refs(e.Value) {
+			if _, seen := refs[ref]; !seen {
+				order = append(order, ref)
+			}
+			refs[ref] = append(refs[ref], e)
+		}
+	}
+	if len(order) == 0 {
+		return nil, nil // a file of literals needs no 1Password session at all
+	}
+	c, err := newClient()
+	if err != nil {
+		return nil, err
+	}
+	resolved := make(map[string]string, len(order))
+	var failures []string
+	for _, ref := range order {
+		secret, err := c.Resolve(ctx, ref)
+		if err != nil {
+			for _, e := range refs[ref] {
+				failures = append(failures, fmt.Sprintf("%s (line %d): %s", e.Key, e.Line, redact(err.Error(), ref)))
+			}
+			continue
+		}
+		resolved[ref] = secret
+	}
+	if len(failures) > 0 {
+		// Redact anything that did resolve, in case a vendor error quoted it.
+		for i, f := range failures {
+			for _, secret := range resolved {
+				f = redact(f, secret)
+			}
+			failures[i] = f
+		}
+		return nil, fmt.Errorf("could not resolve %d of %d references:\n  %s", len(failures), len(order), strings.Join(failures, "\n  "))
+	}
+	return resolved, nil
+}
+
+// exec runs the child with stdio wired straight through and mirrors its status.
+func (a App) exec(ctx context.Context, args []string, env []string) error {
+	stdin := a.In
+	if stdin == nil {
+		stdin = os.Stdin
+	}
+	child := exec.CommandContext(ctx, args[0], args[1:]...)
+	child.Env = env
+	child.Stdin, child.Stdout, child.Stderr = stdin, a.Out, a.Err
+	err := child.Run()
+	var exit *exec.ExitError
+	if errors.As(err, &exit) {
+		code := exit.ExitCode()
+		if code < 0 { // killed by a signal
+			code = 1
+		}
+		return &ExitError{Code: code}
+	}
+	return err
+}
+
+// redact mirrors opclient.safeError: sensitive input never reaches a message.
+func redact(message string, secrets ...string) string {
+	for _, secret := range secrets {
+		if secret != "" {
+			message = strings.ReplaceAll(message, secret, "[REDACTED]")
+		}
+	}
+	return message
 }
 
 func resolveVault(ctx context.Context, client Client, wanted string) (string, error) {

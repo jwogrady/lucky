@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -33,6 +34,11 @@ func main() {
 		Config: cfg,
 	}
 	if err := app.Run(context.Background(), os.Args[1:]); err != nil {
+		// A child's exit status is its own to report; Lucky only mirrors it.
+		var exit *cli.ExitError
+		if errors.As(err, &exit) {
+			os.Exit(exit.Code)
+		}
 		fmt.Fprintf(os.Stderr, "lucky: %s\n", err)
 		os.Exit(1)
 	}
