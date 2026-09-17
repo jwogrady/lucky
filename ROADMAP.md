@@ -155,6 +155,29 @@ A clicked link tied to a profile is the answer: a named person, contactable at a
 
 It also protects the customer, which is the point. Access granted on a phone call with no record is access nobody can audit — including them.
 
+### The first scope: general access, until revoked
+
+Start with one scope, and the broadest one:
+
+> You are authorized to log in and make changes until I tell Lucky otherwise.
+
+Standing, not time-boxed. Covers logging in and changing things, not read-only. Granted once by a person, and good until that person withdraws it.
+
+**Lucky, not us.** The customer withdraws by telling the custodian, not by telling the team whose access they are withdrawing. That is the whole difference between a promise and a control: nobody should have to ask the person they are revoking to process the revocation, or wonder whether the message was passed on. It also means the operator cannot quietly be the reason a withdrawal did not take effect.
+
+This is the honest starting point because it is what actually happens on the call. A customer who rings up and asks for a phone number to be changed on their website is not granting a scoped, single-use permission — they are saying "you look after this for me." A consent record claiming anything narrower would be a record of something that did not occur.
+
+**"Until I tell Lucky otherwise" is the obligation.** A grant that can be withdrawn only in principle has not really been given on those terms. Withdrawal needs to be as easy as the click that granted it, reachable by the customer without going through us, and it needs its own record — who withdrew, when — because the interesting question afterwards is not whether access exists now but what was authorized during the period it did.
+
+This is the same gap as the link: the customer needs somewhere to reach Lucky that is not an operator's terminal. Consent and withdrawal are two ends of one customer-facing surface, and it is the piece the CLI cannot be.
+
+Two things follow that are easy to get wrong:
+
+- Withdrawal is not deletion. The grant happened, and the record of it outlives the access, for the same reason `archive` exists and `delete` does not.
+- Withdrawn consent does not revoke the credential. The key still works; only the vendor can change that. Lucky can record that it is no longer authorized and stop resolving it — and the honest follow-up is telling the customer their key is still live and should be rotated.
+
+Narrower scopes come later. They are a refinement of a working record, not a prerequisite for having one.
+
 ### What the record has to carry
 
 - **Who**: the profile, which is why the profile is captured before anything else.
@@ -166,7 +189,7 @@ It also protects the customer, which is the point. Access granted on a phone cal
 
 - What happens to a credential whose link is never clicked. It is already in the vault and already works, so this is not a gate — it is a state. Does it expire, archive itself, or simply show as unauthorized in `inventory` until someone chases it?
 - Whether the operator may act on a credential before the click lands. In the transposing case they were asked to do the work by the person on the phone, so the answer is probably yes, with the record catching up — but that should be a decision rather than a default.
-- Scope granularity: one consent per credential, or one per engagement covering several.
+- Scope granularity beyond the general grant: per credential, or per engagement.
 - Re-consent: when the work changes, when the credential rotates, or on a schedule.
 - Email or SMS. The profile captures both, and a link to a mobile is a different assurance from a link to an inbox.
 
