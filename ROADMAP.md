@@ -132,7 +132,47 @@ We are not given accounts. We are given access, by a person, to something they h
 
 ---
 
-## Magic-link credential intake
+## Intake first, then permission
+
+**The CLI does the intake. The link asks for permission afterwards.**
+
+The order is the point, and it follows the call rather than fighting it:
+
+1. `lucky new profile` — who is this. Asked on the call, because it is the question you would ask anyway.
+2. **Secure intake, in the CLI.** The customer reads the credential; the operator enters it; it goes straight to the customer's vault and nowhere else.
+3. `lucky verify` — while they are still on the line, because transcription is the failure mode.
+4. **Then the link**, to the person whose profile was just captured:
+
+   > Click on the link to authorize whatever it is we just talked about.
+
+The credential is already safe at step 2. What step 4 adds is the record that the person agreed to it — and it is asked for *after*, because the customer called asking for work to be done and holding that work hostage to an email they have not opened yet serves nobody.
+
+### Why permission needs its own artifact
+
+Secure intake solves custody: the secret is in the right vault, never on disk, never in an inbox. It does not solve authority. The call ends with an operator holding a customer's password and nothing showing the customer agreed to that. Both people remember it and neither can produce it. A dispute months later — "I never authorized anyone to log into my GoDaddy" — has no answer, and the honest position is that the customer is right to ask.
+
+A clicked link tied to a profile is the answer: a named person, contactable at an address they control, acting at a recorded time, against a scope written while the conversation was still happening.
+
+It also protects the customer, which is the point. Access granted on a phone call with no record is access nobody can audit — including them.
+
+### What the record has to carry
+
+- **Who**: the profile, which is why the profile is captured before anything else.
+- **What**: the scope, in the words used on the call. "Whatever it is we just talked about" is what the customer heard; the record needs the operator's version of it, written during the call rather than reconstructed.
+- **When**, and through which address or number the link was delivered and opened.
+- Non-secret throughout, and it outlives the credential it authorized.
+
+### Open questions
+
+- What happens to a credential whose link is never clicked. It is already in the vault and already works, so this is not a gate — it is a state. Does it expire, archive itself, or simply show as unauthorized in `inventory` until someone chases it?
+- Whether the operator may act on a credential before the click lands. In the transposing case they were asked to do the work by the person on the phone, so the answer is probably yes, with the record catching up — but that should be a decision rather than a default.
+- Scope granularity: one consent per credential, or one per engagement covering several.
+- Re-consent: when the work changes, when the credential rotates, or on a schedule.
+- Email or SMS. The profile captures both, and a link to a mobile is a different assurance from a link to an inbox.
+
+---
+
+## Customer-entered credentials
 
 **The customer enters their own credential. The operator never handles it.**
 
@@ -146,7 +186,7 @@ It also changes what "authorize" means. The customer is the party who actually h
 
 ### Open questions
 
-- What serves the link, given Lucky is a CLI. This implies the v0.7 API arriving earlier, or a narrow purpose-built endpoint before it.
+- What serves the link. Intake is the CLI, but a link has to point at something a customer can open, and an operator's terminal is not a URL. This is the one piece the CLI cannot be.
 - Link lifetime, single use, and what happens to a link that is never opened.
 - Whether the mobile number is a second factor on the link or only a contact route.
 - What the customer sees: a bare field, or the template's `where` text guiding them to the right console page.
@@ -155,6 +195,8 @@ It also changes what "authorize" means. The customer is the party who actually h
 ### Relationship to v0.3
 
 v0.3 is "Lucky can share" — handing a credential *out* securely. This is the same problem in the other direction: taking one *in* securely. They likely share a mechanism and should be designed together.
+
+Consent belongs on the way out too: handing a credential to someone is an act a person authorized, and it wants the same record.
 
 ---
 
