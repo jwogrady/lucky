@@ -174,3 +174,44 @@ func TestVerifyFailureToResolveIsNotAPass(t *testing.T) {
 		t.Fatalf("unexpected output %q", out.String())
 	}
 }
+
+// `lucky` with no arguments is the most-run invocation there is, so what it
+// says matters more than any single command's output.
+func TestBriefReportsWithoutGuessingAVault(t *testing.T) {
+	app, out, errOut := verifyApp(fakeVault{}, &fakeDoer{status: 200})
+	if err := app.Run(context.Background(), nil); err != nil {
+		t.Fatal(err)
+	}
+	both := out.String() + errOut.String()
+	if !strings.Contains(out.String(), "it's me, lucky") {
+		t.Fatalf("unexpected briefing %q", out.String())
+	}
+	if !strings.Contains(out.String(), "the book") || !strings.Contains(out.String(), "the door") {
+		t.Fatalf("briefing lost its substance %q", out.String())
+	}
+	// No default vault is configured, so nothing may be proposed by name.
+	if !strings.Contains(both, "--vault <vault>") {
+		t.Fatalf("expected a placeholder, not a guess: %q", both)
+	}
+	if strings.Contains(both, "--vault wtp") {
+		t.Fatal("briefing guessed a vault from the vault list")
+	}
+}
+
+// A locked vault or a new machine is a normal state, not a crash.
+func TestBriefSurvivesNoAuth(t *testing.T) {
+	out, errOut := &bytes.Buffer{}, &bytes.Buffer{}
+	app := &App{Out: out, Err: errOut, NewClient: func(context.Context, Config) (Client, error) {
+		return nil, errors.New("no 1Password CLI found")
+	}}
+	if err := app.Run(context.Background(), nil); err != nil {
+		t.Fatalf("a locked vault must not be an error: %v", err)
+	}
+	if !strings.Contains(out.String(), "locked") || !strings.Contains(errOut.String(), "sign in") {
+		t.Fatalf("unhelpful output %q / %q", out.String(), errOut.String())
+	}
+	// The local half still reports: templates do not need 1Password.
+	if !strings.Contains(out.String(), "the book") {
+		t.Fatalf("templates should report without auth: %q", out.String())
+	}
+}

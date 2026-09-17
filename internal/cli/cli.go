@@ -65,7 +65,8 @@ func (a App) Run(ctx context.Context, args []string) error {
 
 func (a App) command() *cobra.Command {
 	account := os.Getenv("LUCKY_OP_ACCOUNT")
-	root := &cobra.Command{Use: "lucky", Short: "CosmOS credential custodian", SilenceErrors: true, SilenceUsage: true}
+	root := &cobra.Command{Use: "lucky", Short: "CosmOS credential custodian", SilenceErrors: true, SilenceUsage: true, Args: cobra.NoArgs}
+	root.RunE = func(cmd *cobra.Command, _ []string) error { return a.brief(cmd, account) }
 	root.SetOut(a.Out)
 	root.SetErr(a.Err)
 	root.PersistentFlags().StringVar(&account, "account", account, "1Password account name or UUID for desktop authentication")
