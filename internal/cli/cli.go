@@ -21,6 +21,7 @@ type Client = credential.Client
 type App struct {
 	Out       io.Writer
 	Err       io.Writer
+	In        io.Reader
 	NewClient func(context.Context, Config) (Client, error)
 }
 
@@ -105,6 +106,12 @@ func (a App) command() *cobra.Command {
 		_, err = io.WriteString(a.Out, secret)
 		return err
 	}})
+	root.AddCommand(a.providersCommand())
+	root.AddCommand(a.profileCommand(&account))
+	root.AddCommand(a.putCommand(&account))
+	root.AddCommand(a.inventoryCommand(&account))
+	root.AddCommand(a.archiveCommand(&account))
+	root.AddCommand(a.newVaultCommand(&account))
 	return root
 }
 

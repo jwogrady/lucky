@@ -26,6 +26,29 @@ export OP_SERVICE_ACCOUNT_TOKEN='...'
 
 Desktop authentication requires the 1Password desktop app's SDK integration setting and a CGO-enabled build. Service-account authentication takes precedence when `OP_SERVICE_ACCOUNT_TOKEN` is present.
 
+## Taking on a customer
+
+```bash
+lucky new-customer "We The Plumbers"   # the vault: their boundary
+lucky profile --vault we-the-plumbers  # who they are; not secret, lives there anyway
+lucky put --vault we-the-plumbers      # paste a credential, get a reference back
+lucky inventory --vault we-the-plumbers # what is held, what is missing
+lucky archive --vault we-the-plumbers --provider godaddy --service api
+```
+
+`put` reads the secret without echoing it, writes it straight to 1Password, and
+prints the `op://` references plus the `.env.op` lines to paste them into. The
+secret never touches disk and never appears in output.
+
+`lucky providers` lists the templates — GoDaddy, Bluehost, cPanel, Cloudflare,
+Google (service account, Ads, Maps), Housecall Pro, Yext, WordPress, Supabase,
+Netlify, Vultr — with where in each console the credential comes from. Override
+or add one by dropping a JSON file in `$LUCKY_TEMPLATES`.
+
+There is no `delete`. `archive` retires a credential and keeps the record,
+because a revoked key is still evidence of what was issued and when it stopped
+being trusted.
+
 ## Use Lucky as a library
 
 ```go

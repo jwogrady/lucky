@@ -15,6 +15,7 @@ func main() {
 	app := cli.App{
 		Out: os.Stdout,
 		Err: os.Stderr,
+		In:  os.Stdin,
 		NewClient: func(ctx context.Context, cfg cli.Config) (cli.Client, error) {
 			return opclient.New(ctx, opclient.Config{
 				Account: cfg.Account,

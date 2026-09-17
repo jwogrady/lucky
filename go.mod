@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/1password/onepassword-sdk-go v0.4.1
 	github.com/spf13/cobra v1.10.2
+	golang.org/x/term v0.28.0
 )
 
 require (
