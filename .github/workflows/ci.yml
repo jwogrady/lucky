@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master, 'beta/**', 'alpha/**']
+
+permissions:
+  contents: read
+
+jobs:
+  # Two builds, because Lucky has two authentication modes and they do not
+  # compile the same way. A service account needs no cgo; desktop app
+  # authentication does, and it is the mode an operator actually uses. Testing
+  # only the first would leave the human-present path — the one the CLI exists
+  # for — validated by nothing.
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cgo: ["0", "1"]
+    name: test (CGO_ENABLED=${{ matrix.cgo }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go build ./...
+        env:
+          CGO_ENABLED: ${{ matrix.cgo }}
+      - run: go test ./...
+        env:
+          CGO_ENABLED: ${{ matrix.cgo }}
+      - run: go vet ./...
+        env:
+          CGO_ENABLED: ${{ matrix.cgo }}
